@@ -1,26 +1,145 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* System "G". Dark only: there is no light mode.
+   Default palette and easings are cleared so only these tokens exist. */
+@theme static {
+  --color-*: initial;
+  --ease-*: initial;
+
+  /* Surfaces */
+  --color-ground: #08090a;
+  --color-raised-1: #0f1011;
+  --color-raised-2: #16171a;
+
+  /* Lines */
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-strong: rgb(255 255 255 / 0.16);
+
+  /* Text: all three pass 4.5:1 on ground */
+  --color-text: #f7f8f8;
+  --color-text-2: #9ba0a8;
+  --color-text-3: #7a7f87;
+
+  /* Card */
+  --color-pearl: #eeedf0;
+  --color-ink: #111114;
+  --color-card-label: #5a5962;
+  --color-rare-face: #0b0b0d;
+  --color-art: #131316;
+
+  /* Radius */
+  --radius-control: 12px; /* buttons, inputs */
+  --radius-icon: 10px; /* small icon buttons */
+  --radius-card: 16px; /* at 280px card width */
+
+  /* Spacing: Tailwind's 4px base; stay on even steps (8px grid) */
+  --spacing-gutter: 24px; /* phone side margin */
+
+  /* Type scale. Headings: 600, -0.035em. */
+  --text-display: 3rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 600;
+  --text-title: 2rem;
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.035em;
+  --text-title--font-weight: 600;
+  --text-heading: 1.25rem;
+  --text-heading--line-height: 1.3;
+  --text-heading--letter-spacing: -0.035em;
+  --text-heading--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.45;
+  --text-label: 0.75rem; /* Geist Mono, uppercase */
+  --text-label--line-height: 1.3;
+  --text-label--letter-spacing: 0.08em;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* Value comes from EASE in src/lib/motion.ts via <html> style */
+  --ease-g: var(--motion-ease);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: dark;
+
+  /* Foils. Mirrored in src/lib/holo.ts; change both together. */
+  --holo: linear-gradient(115deg, #ff9fd8 0%, #ffe39f 20%, #a8ffcf 40%, #9fd8ff 60%, #c8a8ff 80%, #ff9fd8 100%);
+  --prism: linear-gradient(115deg, #ff7ac8 0%, #ffd97a 20%, #7affc0 40%, #7acfff 60%, #b98cff 80%, #ff7ac8 100%);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-text);
+}
+
+/* Holo: the only colour in the UI (cards, selected/focus hairline, "new" chip) */
+@utility bg-holo {
+  background-image: var(--holo);
+}
+
+/* Prism: rare cards and their frames */
+@utility bg-prism {
+  background-image: var(--prism);
+}
+
+/* Soft radial behind hero content. Tune with --glow-alpha (0.08–0.16). */
+@utility bg-glow {
+  background-image: radial-gradient(closest-side, rgb(180 170 255 / var(--glow-alpha, 0.12)), transparent);
+}
+
+/* Card art window: #131316 with 1px dots every 8px at 7% white */
+@utility bg-art-window {
+  background-color: var(--color-art);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='1' height='1' fill='white' fill-opacity='0.07'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+}
+
+/* Press feedback. Reduced motion: a short opacity dip instead of a scale. */
+@utility press {
+  transition-property: transform, opacity;
+  transition-duration: var(--dur-press);
+  transition-timing-function: var(--motion-ease);
+  &:active {
+    transform: scale(var(--press-scale));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: var(--dur-reduced);
+    &:active {
+      transform: none;
+      opacity: 0.8;
+    }
+  }
+}
+
+/* 1px holo hairline for focus-visible and selected ([data-selected]) states.
+   Sits 3px outside the element; set --ring-radius to the element's radius. */
+@utility holo-ring {
+  position: relative;
+  &:focus-visible {
+    outline: none;
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: calc(var(--ring-radius, var(--radius-control)) + 3px);
+    padding: 1px;
+    background: var(--holo);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-fade) var(--motion-ease);
+  }
+  &:focus-visible::after,
+  &[data-selected="true"]::after {
+    opacity: 1;
+  }
 }
