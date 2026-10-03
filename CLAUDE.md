@@ -28,6 +28,8 @@ Copy and art are data; swapping them must never touch components.
 
 `reference/dino-v0/` holds the v0 brief, sprites and old design boards. Never import from it. Its styling and motion numbers are superseded by this file.
 
+Approved designs: reference/design/ (see DESIGN.md)
+
 ## Design tokens (system "G")
 
 | Token | Value | Tailwind |
