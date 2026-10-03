@@ -1,6 +1,6 @@
 // The single source of truth for motion. Every duration, delay, stagger and
 // distance lives here; nothing is hardcoded anywhere else.
-// Units: milliseconds unless the key says otherwise (Rise = px, Scale/To = ratio).
+// Units: milliseconds unless the key says otherwise (Rise/Shift = px, Scale/To = ratio).
 
 export const EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
@@ -25,9 +25,17 @@ export const TIMING = {
   restStagger: 50,
   restRise: 8,
   skipFade: 150,
+  // Quiz: a picked answer holds, then the question departs left and the next
+  // arrives from the right. The new progress segment fills alongside.
+  answerHold: 180,
+  qOut: 160,
+  qIn: 220,
+  qShift: 12,
+  segFill: 220,
 } as const;
 
 export const ms = (n: number) => `${n}ms`;
+const px = (n: number) => `${n}px`;
 
 // Exposed as CSS custom properties on <html> so stylesheet utilities
 // (e.g. `press`, `holo-ring`) read from TIMING instead of their own numbers.
@@ -37,4 +45,8 @@ export const MOTION_CSS_VARS: Record<string, string> = {
   "--dur-fade": ms(TIMING.fade),
   "--dur-reduced": ms(TIMING.reduced),
   "--press-scale": String(TIMING.pressScale),
+  "--dur-q-out": ms(TIMING.qOut),
+  "--dur-q-in": ms(TIMING.qIn),
+  "--q-shift": px(TIMING.qShift),
+  "--dur-seg-fill": ms(TIMING.segFill),
 };

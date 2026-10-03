@@ -1,6 +1,6 @@
-// Gradient stops for the holo and prism foils, used where a colour has to be
-// computed in JS (e.g. per-pixel sprite tinting). Mirrors --holo and --prism
-// in src/app/globals.css; change both together.
+// The holo and prism foils. The single source for their stops: CSS reads them
+// as --holo / --prism, set on <html> from FOIL_CSS_VARS (like MOTION_CSS_VARS),
+// and JS uses them directly for per-pixel sprite tinting.
 
 export type GradientStop = readonly [hex: string, at: number];
 
@@ -23,6 +23,14 @@ export const PRISM_STOPS: readonly GradientStop[] = [
   ["#B98CFF", 0.8],
   ["#FF7AC8", 1],
 ];
+
+const toGradient = (stops: readonly GradientStop[]) =>
+  `linear-gradient(${GRADIENT_ANGLE}deg, ${stops.map(([hex, at]) => `${hex} ${Math.round(at * 100)}%`).join(", ")})`;
+
+export const FOIL_CSS_VARS: Record<string, string> = {
+  "--holo": toGradient(HOLO_STOPS),
+  "--prism": toGradient(PRISM_STOPS),
+};
 
 const toRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 

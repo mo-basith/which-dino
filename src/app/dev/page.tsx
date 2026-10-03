@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Sprite, type SpriteSize } from "@/components/Sprite";
+import { Sprite, spriteScale, type SpriteSize } from "@/components/Sprite";
 import { DINO_LIST } from "@/data/dinos";
 
 // Style reference for system "G". Not linked from anywhere.
@@ -22,6 +22,7 @@ const SURFACES: Swatch[] = [
 const LINES: Swatch[] = [
   { name: "line", value: "rgba(255,255,255,0.08)", className: "bg-line" },
   { name: "line-strong", value: "rgba(255,255,255,0.16)", className: "bg-line-strong" },
+  { name: "line-selected", value: "rgba(255,255,255,0.32)", className: "bg-line-selected" },
 ];
 
 const TEXT: Swatch[] = [
@@ -44,16 +45,19 @@ const FOILS: Swatch[] = [
   { name: "glow", value: "rgba(180,170,255,0.12)", className: "bg-glow" },
 ];
 
+// Height/width round DOWN to a whole-number pixel scale, so the rendered size
+// can be smaller than asked; each sprite is captioned with what it got.
 const SPRITE_SIZES: { name: string; size: SpriteSize }[] = [
-  { name: "16 tall", size: { height: 16 } },
-  { name: "64 tall", size: { height: 64 } },
-  { name: "120 wide", size: { width: 120 } },
+  { name: "≤16 tall", size: { height: 16 } },
+  { name: "≤64 tall", size: { height: 64 } },
+  { name: "≤120 wide", size: { width: 120 } },
 ];
 
 const SPRITE_MODES = [
-  { name: "white", color: "var(--color-text)", silhouette: false },
-  { name: "silhouette 16%", color: "rgb(255 255 255 / 0.16)", silhouette: true },
-  { name: "holo", color: "holo", silhouette: false },
+  { name: "white", color: "var(--color-text)", silhouette: false, cells: false },
+  { name: "silhouette 16%", color: "var(--color-line-strong)", silhouette: true, cells: false },
+  { name: "cells 16%", color: "var(--color-line-strong)", silhouette: true, cells: true },
+  { name: "holo", color: "holo", silhouette: false, cells: false },
 ];
 
 const TYPE_SCALE: { name: string; sample: ReactNode }[] = [
@@ -189,14 +193,13 @@ export default function DevPage() {
           <button className="press holo-ring h-12 rounded-control border border-line bg-raised-1 px-6 text-left">
             Reacts, never replies
           </button>
-          <button
-            data-selected="true"
-            className="press holo-ring h-12 rounded-control border border-line bg-raised-2 px-6 text-left"
-          >
-            Muted it in 2019 · selected
+          <button className="press holo-ring h-12 rounded-control border border-line-selected bg-raised-2 px-6 text-left">
+            Muted it in 2019 · picked
           </button>
         </div>
-        <p className="text-small text-text-3">Tab to see the focus hairline. Press to see the scale.</p>
+        <p className="text-small text-text-3">
+          Tab to see the holo focus hairline (keyboard focus only). Press to see the scale.
+        </p>
       </Section>
 
       <Section title="Sprites">
@@ -216,13 +219,18 @@ export default function DevPage() {
               <div className="bg-art-window grid grid-cols-[auto_auto_auto] items-end justify-start gap-x-6 gap-y-4 overflow-x-auto rounded-control p-4">
                 {SPRITE_MODES.flatMap((m) =>
                   SPRITE_SIZES.map((s) => (
-                    <Sprite
-                      key={`${m.name}-${s.name}`}
-                      id={dino.id}
-                      size={s.size}
-                      color={m.color}
-                      silhouette={m.silhouette}
-                    />
+                    <figure key={`${m.name}-${s.name}`} className="flex flex-col items-start gap-1">
+                      <Sprite
+                        id={dino.id}
+                        size={s.size}
+                        color={m.color}
+                        silhouette={m.silhouette}
+                        cells={m.cells}
+                      />
+                      <figcaption className="font-mono text-label text-text-2">
+                        {spriteScale(dino.id, s.size)}×
+                      </figcaption>
+                    </figure>
                   )),
                 )}
               </div>

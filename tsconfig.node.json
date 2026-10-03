@@ -1,0 +1,16 @@
+{
+  // Compiles the Node-side scripts and tests to .tsout/ (CommonJS) so they run
+  // on plain `node` with no extra dependencies. See `npm test` / `npm run simulate`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": ".tsout"
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.test.ts"]
+}

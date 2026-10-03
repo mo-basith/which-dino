@@ -2,7 +2,10 @@ import type { DinoId } from "@/data/dinos";
 import { SPRITES, SPRITE_ACCENT, type SpriteGrid } from "@/data/sprites";
 import { HOLO_STOPS, colorAt, positionAlong } from "@/lib/holo";
 
-/** Pixel scale directly, or a target height/width in px (scale derived from the grid). */
+/**
+ * Pixel scale directly, or a target height/width in px. Always renders at a
+ * whole-number scale: height/width round DOWN to fit (minimum 1).
+ */
 export type SpriteSize = { scale: number } | { height: number } | { width: number };
 
 type SpriteProps = {
@@ -12,6 +15,8 @@ type SpriteProps = {
   color?: string;
   /** Draw 'r' pixels in the main colour instead of the accent. */
   silhouette?: boolean;
+  /** Draw each pixel as its own square with a 1px gap (the faint idle look). Needs scale ≥ 2. */
+  cells?: boolean;
   accent?: string;
   /** Accessible name. Without one the sprite is decorative (aria-hidden). */
   label?: string;
@@ -39,22 +44,41 @@ function toRuns(grid: SpriteGrid): Run[] {
 const toPath = (runs: Run[]) =>
   runs.map(({ x, y, length }) => `M${x} ${y}h${length}v1h-${length}z`).join("");
 
-const round = (n: number) => Math.round(n * 100) / 100;
+// One square per pixel, `cell` grid units wide (the rest of the unit is the gap).
+const toCellPath = (runs: Run[], cell: number) =>
+  runs
+    .flatMap(({ x, y, length }) =>
+      Array.from({ length }, (_, i) => `M${x + i} ${y}h${cell}v${cell}h-${cell}z`),
+    )
+    .join("");
+
+const gridWidth = (grid: SpriteGrid) => Math.max(...grid.map((row) => row.length));
+
+/** The whole-number pixel scale a sprite renders at for a given size. */
+export function spriteScale(id: DinoId, size: SpriteSize): number {
+  if ("scale" in size) return size.scale;
+  const grid = SPRITES[id];
+  const fit = "height" in size ? size.height / grid.length : size.width / gridWidth(grid);
+  return Math.max(1, Math.floor(fit));
+}
 
 export function Sprite({
   id,
   size,
   color = "var(--color-text)",
   silhouette = false,
+  cells = false,
   accent = SPRITE_ACCENT,
   label,
   className,
 }: SpriteProps) {
   const grid = SPRITES[id];
   const rows = grid.length;
-  const cols = Math.max(...grid.map((row) => row.length));
-  const scale =
-    "scale" in size ? size.scale : "height" in size ? size.height / rows : size.width / cols;
+  const cols = gridWidth(grid);
+  const scale = spriteScale(id, size);
+  // A 1px gap, in grid units. Below scale 2 there is no room for one.
+  const cell = cells && scale >= 2 ? (scale - 1) / scale : 1;
+  const path = (runs: Run[]) => (cell < 1 ? toCellPath(runs, cell) : toPath(runs));
 
   const isAccent = (char: string) => char === "r" && !silhouette;
   const runs = toRuns(grid);
@@ -62,8 +86,8 @@ export function Sprite({
   return (
     <svg
       viewBox={`0 0 ${cols} ${rows}`}
-      width={round(cols * scale)}
-      height={round(rows * scale)}
+      width={cols * scale}
+      height={rows * scale}
       shapeRendering="crispEdges"
       className={className}
       role={label ? "img" : undefined}
@@ -78,8 +102,8 @@ export function Sprite({
                 key={`${x + i}-${y}`}
                 x={x + i}
                 y={y}
-                width={1}
-                height={1}
+                width={cell}
+                height={cell}
                 fill={
                   isAccent(char)
                     ? accent
@@ -91,9 +115,9 @@ export function Sprite({
         </>
       ) : (
         <>
-          <path d={toPath(runs.filter((r) => !isAccent(r.char)))} style={{ fill: color }} />
+          <path d={path(runs.filter((r) => !isAccent(r.char)))} style={{ fill: color }} />
           {runs.some((r) => isAccent(r.char)) && (
-            <path d={toPath(runs.filter((r) => isAccent(r.char)))} style={{ fill: accent }} />
+            <path d={path(runs.filter((r) => isAccent(r.char)))} style={{ fill: accent }} />
           )}
         </>
       )}
