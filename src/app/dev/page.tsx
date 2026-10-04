@@ -61,7 +61,7 @@ const SPRITE_MODES = [
 ];
 
 const TYPE_SCALE: { name: string; sample: ReactNode }[] = [
-  { name: "display · 48 / 600", sample: <p className="text-display">Which Dino?</p> },
+  { name: "display · 40 (56 from 768) / 600", sample: <p className="text-display">Which Dino?</p> },
   { name: "title · 32 / 600", sample: <p className="text-title">You’re a Triceratops</p> },
   { name: "heading · 20 / 600", sample: <p className="text-heading">Collect all 10</p> },
   {

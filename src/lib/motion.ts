@@ -1,15 +1,23 @@
 // The single source of truth for motion. Every duration, delay, stagger and
 // distance lives here; nothing is hardcoded anywhere else.
-// Units: milliseconds unless the key says otherwise (Rise/Shift = px, Scale/To = ratio).
+// Units: milliseconds unless the key says otherwise (Rise/Shift = px, Scale/To/Rest/Active = ratio,
+// Max = degrees).
 
 export const EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
 export const TIMING = {
   press: 150,
   pressScale: 0.97,
+  // Card: tilt follows the pointer (max tiltMax degrees), the foil travels
+  // foilShift px in total (±half) with it, and the glare brightens from
+  // glareRest to glareActive opacity while the pointer is over the card.
   flip: 340,
   tilt: 160,
+  tiltMax: 10,
+  foilShift: 120,
   glare: 200,
+  glareRest: 0.3,
+  glareActive: 0.5,
   fade: 150,
   reduced: 150,
   shuffleSteps: [60, 60, 60, 65, 75, 90, 110, 135, 165, 205, 250],
@@ -49,4 +57,10 @@ export const MOTION_CSS_VARS: Record<string, string> = {
   "--dur-q-in": ms(TIMING.qIn),
   "--q-shift": px(TIMING.qShift),
   "--dur-seg-fill": ms(TIMING.segFill),
+  "--dur-flip": ms(TIMING.flip),
+  "--dur-tilt": ms(TIMING.tilt),
+  "--foil-shift": px(TIMING.foilShift),
+  "--dur-glare": ms(TIMING.glare),
+  "--glare-rest": String(TIMING.glareRest),
+  "--glare-active": String(TIMING.glareActive),
 };

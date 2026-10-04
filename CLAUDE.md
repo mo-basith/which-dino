@@ -20,13 +20,14 @@ Ten dinos: seven commons (T-rex, Velociraptor, Triceratops, Stegosaurus, Brachio
 
 Copy and art are data; swapping them must never touch components.
 
-- `src/data/dinos.ts`: one typed record per dino. `era`, `lengthM`, `fact`, `herdWith`, `avoid` are TODO placeholders (`"TODO"` / `null`).
-- `src/data/sprites.ts`: pixel grids as string rows. `#` = ink, `r` = accent, `.` = empty. Rows must be the same width. Paste new art straight over an array.
-- `src/data/quiz.ts`: 6 questions × 4 answers; each answer scores two dino ids. Balance is tuned from the exhaustive simulation (`npm run simulate`), never by hand.
+- `src/data/dinos.ts`: one typed record per dino. `era`, `lengthM`, `span` (`"length"` or `"wingspan"`), `fact`, `herdWith`, `avoid` are drafts: every line marked `// verify` is fact-checked before launch.
+- `src/data/sprites.ts`: pixel grids as string rows. `#` = ink, `r` = accent, `.` = empty. Rows must be the same width. Paste new art straight over an array. `PROPS` holds non-dino art (the `human` for scale); `<Sprite>` draws any `SpriteId`.
+- `src/data/quiz.ts`: 6 questions × 4 answers; each answer scores two dino ids and carries a `cardLine` + `value` (0–99) for the card back. Balance is tuned from the exhaustive simulation (`npm run simulate`), never by hand.
 
 ## Scoring, tests and scripts
 
 - `src/lib/scoring.ts` is pure (no React): each answer adds 1 to each of its two dinos; highest total wins. Ties go to the dino scored by the most recent answer; if both come from that answer, the one listed first wins.
+- `src/lib/card.ts` is pure too: `backRows` (the card back's 3 rows: the answers that scored the winning dino, in question order, last 3; topped up from README stats in listed order; just the stats with no answers), plus the card's formatting and layout numbers.
 - `npm test` runs `*.test.ts` with Node's built-in runner. `npm run simulate` scores all 4,096 answer combinations (targets: each common 11–15%, each rare 3–6%).
 - Both compile with `tsc -p tsconfig.node.json` into `.tsout/` (gitignored), so no TS runner is needed. Anything they import must use relative imports, not `@/`.
 
@@ -52,6 +53,7 @@ Approved designs: reference/design/ (see DESIGN.md)
 | text-3 | `#7A7F87` | `text-text-3` |
 | pearl (common card face) | `#EEEDF0` | `bg-pearl` |
 | ink (common card ink) | `#111114` | `text-ink` |
+| rare-label (rare card label, fact, footer) | `rgba(255,255,255,0.62)` | `text-rare-label` |
 | card-label (common card label) | `#5A5962` | `text-card-label` |
 | rare-face | `#0B0B0D` | `bg-rare-face` |
 | art window | `#131316` + 1px dots / 8px / 7% white | `bg-art-window` |
@@ -61,9 +63,9 @@ Approved designs: reference/design/ (see DESIGN.md)
   `linear-gradient(115deg, #FF9FD8 0%, #FFE39F 20%, #A8FFCF 40%, #9FD8FF 60%, #C8A8FF 80%, #FF9FD8 100%)`
 - **Prism** for rare cards and their frames: `bg-prism`.
   `linear-gradient(115deg, #FF7AC8 0%, #FFD97A 20%, #7AFFC0 40%, #7ACFFF 60%, #B98CFF 80%, #FF7AC8 100%)`
-- `src/lib/holo.ts` is the only source of the holo and prism stops. It builds `--holo` / `--prism` (`FOIL_CSS_VARS`), set on `<html>` like `MOTION_CSS_VARS`; never hardcode the gradients in CSS.
+- `src/lib/holo.ts` is the only source of the holo and prism stops. It builds `--holo` / `--prism` and the repeating `--holo-foil` (`FOIL_CSS_VARS`), set on `<html>` like `MOTION_CSS_VARS`; never hardcode the gradients in CSS.
 - **Glow:** soft radial behind hero content, `bg-glow`, rgba(180,170,255, 0.08–0.16) via `--glow-alpha`.
-- **Type:** Geist for UI. Headings 600, letter-spacing -0.035em (`text-display` 48, `text-title` 32, `text-heading` 20 carry this). Body `text-body` 16, `text-small` 14. Geist Mono (`font-mono`) for labels (`text-label` 12, uppercase, no extra tracking), counters and numbers, and ALL text on the card itself.
+- **Type:** Geist for UI. Headings 600, letter-spacing -0.035em (`text-display` 40 on phones / 56 from 768px, `text-title` 32, `text-heading` 20 carry this). Body `text-body` 16, `text-small` 14. Geist Mono (`font-mono`) for labels (`text-label` 12, uppercase, no extra tracking), counters and numbers, and ALL text on the card itself.
 - **Radius:** buttons and inputs `rounded-control` (12), small icon buttons `rounded-icon` (10), key hints `rounded-key` (6), cards `rounded-card` (16 at 280px card width; scale with the card), chips `rounded-full`.
 - **Spacing:** 8px grid. Tailwind's base is 4px, so use even steps (`p-2`, `p-4`, `gap-6`…). Phone side margin `px-gutter` (24).
 - **Layout:** phone first. On wider screens the same column is centred at `max-w-column` (440px) until the two-column desktop lands.
@@ -76,13 +78,23 @@ Approved designs: reference/design/ (see DESIGN.md)
 - Animate `transform` and `opacity` only.
 - One easing: `cubic-bezier(0.2,0,0,1)` (`EASE` in `src/lib/motion.ts`; `ease-g` / `var(--motion-ease)` in CSS). Never ease-in on UI. No bounce.
 - Press feedback: `scale(0.97)`, 150ms (`press` utility).
-- **Every duration, delay, stagger and distance lives in the `TIMING` object in `src/lib/motion.ts`.** Nothing hardcoded anywhere else: no `duration-150`, no literal ms in components. CSS reads TIMING through custom properties set on `<html>` (`MOTION_CSS_VARS`: `--dur-press`, `--dur-fade`, `--dur-reduced`, `--press-scale`, `--dur-q-out`, `--dur-q-in`, `--q-shift`, `--dur-seg-fill`); add new ones there when CSS needs them.
+- **Every duration, delay, stagger and distance lives in the `TIMING` object in `src/lib/motion.ts`.** Nothing hardcoded anywhere else: no `duration-150`, no literal ms in components. CSS reads TIMING through custom properties set on `<html>` (`MOTION_CSS_VARS`: `--dur-press`, `--dur-fade`, `--dur-reduced`, `--press-scale`, `--dur-q-out`, `--dur-q-in`, `--q-shift`, `--dur-seg-fill`, `--dur-flip`, `--dur-tilt`, `--foil-shift`, `--dur-glare`, `--glare-rest`, `--glare-active`); add new ones there when CSS needs them.
 - `prefers-reduced-motion`: gentler, not zero. No travel, rotation or flips; state changes become ~150ms (`TIMING.reduced`) fades.
 - Interactive sequences use one explicit state machine with a synchronous ref lock against double-fire. Use interruptible transitions, not keyframes.
 
 ## Components
 
 - `<Sprite id size color silhouette cells accent label />` (`src/components/Sprite.tsx`): crisp SVG pixel art, always at a whole-number pixel scale. `size` is `{ scale }`, `{ height }` or `{ width }`; height/width round DOWN to the nearest whole scale (minimum 1; `spriteScale()` tells you which). `color` is any CSS colour or `"holo"` (each pixel tinted by its position on the holo gradient). `silhouette` draws `r` pixels in the main colour instead of the accent. `cells` draws each pixel as its own square with a 1px gap (the faint idle look; needs scale ≥ 2); solid is the default.
+
+## The card (`src/components/card/`)
+
+- `<Card dinoId rows holder? hatchedAt mode side? width? />`. `faces.tsx` is the presentational front/back; `Card.tsx` scales, tilts and flips. Card styles live in the `card-*` classes in `globals.css`; each face sets a `--card-*` palette (`.card-common` / `.card-rare`), so parts never branch on rarity.
+- Designed at 280×350 and scaled as a whole with `transform`. **Size rule:** pixel art is only on whole pixels at whole multiples of 280. Interactive cards (result, card detail, returning intro, shared link) render at **280**; **240** only as a fallback when the viewport is under 700px tall. Thumbnails (104, the share-sheet preview) may be slightly soft. Share and preview images use whole multiples (560, 840), never "whatever fits".
+- Interactive: one reducer (`side`, `phase`) with a synchronous `busy` ref lock. Tilt, foil and glare follow a desktop mouse only (written straight to CSS variables, no re-render); touch just flips. The flip control is a `<button>` over the card ("Flip the {name} card"). Reduced motion: no tilt, the flip becomes a `TIMING.reduced` crossfade.
+- Static: no handlers, foil at a fixed slight offset. For thumbnails and exports.
+- The "STILL HERE" chicken in the art window (tilt towards the top-left, desktop pointer only) is deliberate. Keep it quiet.
+- Not in v1: the serial ("NO. 0427") and "% OF PLAYERS" slots stay empty.
+- `/dev/card` is the test bench (all 10, a scale row, holder and answer pickers, an overflow check); `/dev/card/compare` lays out the four J1 views at the reference's exact positions for screenshot diffs.
 
 ## The quiz flow (`src/components/quiz/`)
 

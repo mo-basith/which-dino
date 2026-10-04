@@ -1,5 +1,5 @@
-import type { DinoId } from "@/data/dinos";
-import { SPRITES, SPRITE_ACCENT, type SpriteGrid } from "@/data/sprites";
+import type { CSSProperties } from "react";
+import { SPRITE_ACCENT, spriteGrid, type SpriteGrid, type SpriteId } from "@/data/sprites";
 import { HOLO_STOPS, colorAt, positionAlong } from "@/lib/holo";
 
 /**
@@ -9,7 +9,7 @@ import { HOLO_STOPS, colorAt, positionAlong } from "@/lib/holo";
 export type SpriteSize = { scale: number } | { height: number } | { width: number };
 
 type SpriteProps = {
-  id: DinoId;
+  id: SpriteId;
   size: SpriteSize;
   /** Any CSS colour (vars work), or "holo" to tint each pixel by its place on the holo gradient. */
   color?: string;
@@ -21,6 +21,7 @@ type SpriteProps = {
   /** Accessible name. Without one the sprite is decorative (aria-hidden). */
   label?: string;
   className?: string;
+  style?: CSSProperties;
 };
 
 type Run = { x: number; y: number; length: number; char: string };
@@ -55,9 +56,9 @@ const toCellPath = (runs: Run[], cell: number) =>
 const gridWidth = (grid: SpriteGrid) => Math.max(...grid.map((row) => row.length));
 
 /** The whole-number pixel scale a sprite renders at for a given size. */
-export function spriteScale(id: DinoId, size: SpriteSize): number {
+export function spriteScale(id: SpriteId, size: SpriteSize): number {
   if ("scale" in size) return size.scale;
-  const grid = SPRITES[id];
+  const grid = spriteGrid(id);
   const fit = "height" in size ? size.height / grid.length : size.width / gridWidth(grid);
   return Math.max(1, Math.floor(fit));
 }
@@ -71,8 +72,9 @@ export function Sprite({
   accent = SPRITE_ACCENT,
   label,
   className,
+  style,
 }: SpriteProps) {
-  const grid = SPRITES[id];
+  const grid = spriteGrid(id);
   const rows = grid.length;
   const cols = gridWidth(grid);
   const scale = spriteScale(id, size);
@@ -90,6 +92,7 @@ export function Sprite({
       height={rows * scale}
       shapeRendering="crispEdges"
       className={className}
+      style={style}
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}

@@ -154,3 +154,21 @@ export const SPRITES = {
     "...##..##...",
   ],
 } satisfies Record<DinoId, SpriteGrid>;
+
+/** Non-dino art drawn on cards. `human` stands next to each dino for scale. */
+export const PROPS = {
+  human: [
+    ".##.",
+    ".##.",
+    "####",
+    ".##.",
+    ".##.",
+    "#..#",
+    "#..#",
+  ],
+} satisfies Record<string, SpriteGrid>;
+
+export type SpriteId = DinoId | keyof typeof PROPS;
+
+export const spriteGrid = (id: SpriteId): SpriteGrid =>
+  id in PROPS ? PROPS[id as keyof typeof PROPS] : SPRITES[id as DinoId];

@@ -28,16 +28,16 @@ export type Dino = {
   rarity: Rarity;
   oneLiner: string;
   stats: readonly [Stat, Stat, Stat];
-  // TODO(content): the fields below are placeholders until the content pass.
-  // `null` / "TODO" mean "not written yet"; tighten the types once filled.
+  // Drafts: every era, size and fact is fact-checked before launch (see `// verify`).
+  /** Printed top-left of the art window, as written. */
   era: string;
-  lengthM: number | null;
+  /** Printed on the scale bar as "{lengthM} M", plus "WINGSPAN" when `span` says so. */
+  lengthM: number;
+  span: "length" | "wingspan";
   fact: string;
-  herdWith: DinoId | null;
-  avoid: DinoId | null;
+  herdWith: DinoId;
+  avoid: DinoId;
 };
-
-const TODO = "TODO";
 
 export const DINOS: Record<DinoId, Dino> = {
   trex: {
@@ -51,11 +51,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Arm reach", value: 8 },
       { label: "Volume", value: 94 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Cretaceous · 68–66 mya", // verify
+    lengthM: 12, // verify
+    span: "length",
+    fact: "One of the strongest bites of any land animal, ever.", // verify
+    herdWith: "triceratops",
+    avoid: "spinosaurus",
   },
   velociraptor: {
     id: "velociraptor",
@@ -68,11 +69,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Speed", value: 91 },
       { label: "Patience", value: 14 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Cretaceous · 75–71 mya", // verify
+    lengthM: 2, // verify
+    span: "length",
+    fact: "Real ones were about the size of a turkey, and had feathers.", // verify
+    herdWith: "chicken",
+    avoid: "stegosaurus",
   },
   triceratops: {
     id: "triceratops",
@@ -85,11 +87,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Patience", value: 62 },
       { label: "Headbutt", value: 88 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Cretaceous · 68–66 mya", // verify
+    lengthM: 9, // verify
+    span: "length",
+    fact: "Its skull was one of the largest of any land animal.", // verify
+    herdWith: "stegosaurus",
+    avoid: "dilophosaurus",
   },
   stegosaurus: {
     id: "stegosaurus",
@@ -102,11 +105,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Boundaries", value: 90 },
       { label: "Urgency", value: 6 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Jurassic · 155–150 mya", // verify
+    lengthM: 9, // verify
+    span: "length",
+    fact: "T-rex lived closer in time to us than to Stegosaurus.", // verify
+    herdWith: "brachiosaurus",
+    avoid: "velociraptor",
   },
   brachiosaurus: {
     id: "brachiosaurus",
@@ -119,11 +123,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Kindness", value: 93 },
       { label: "Hurry", value: 3 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Jurassic · 154–150 mya", // verify
+    lengthM: 22, // verify
+    span: "length",
+    fact: "Its front legs were longer than its back legs, like a giraffe.", // verify
+    herdWith: "stegosaurus",
+    avoid: "spinosaurus",
   },
   spinosaurus: {
     id: "spinosaurus",
@@ -136,11 +141,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Swagger", value: 95 },
       { label: "Humility", value: 7 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Mid Cretaceous · 99–93 mya", // verify
+    lengthM: 14, // verify
+    span: "length",
+    fact: "Probably spent much of its life in water, hunting fish.", // verify
+    herdWith: "dilophosaurus",
+    avoid: "trex",
   },
   dilophosaurus: {
     id: "dilophosaurus",
@@ -153,11 +159,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Frill", value: 94 },
       { label: "Forgiveness", value: 11 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Early Jurassic · 186 mya", // verify
+    lengthM: 7, // verify
+    span: "length",
+    fact: "No evidence it had a frill or spat venom. That was the movies.", // verify
+    herdWith: "spinosaurus",
+    avoid: "triceratops",
   },
   pterodactyl: {
     id: "pterodactyl",
@@ -170,11 +177,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Altitude", value: 92 },
       { label: "Rules", value: 5 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Jurassic · 150 mya", // verify
+    lengthM: 1, // verify
+    span: "wingspan",
+    fact: "A pterosaur: a flying reptile, not a dinosaur.", // verify
+    herdWith: "mosasaurus",
+    avoid: "trex",
   },
   mosasaurus: {
     id: "mosasaurus",
@@ -187,11 +195,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Mystery", value: 93 },
       { label: "Small talk", value: 4 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Late Cretaceous · 82–66 mya", // verify
+    lengthM: 13, // verify
+    span: "length",
+    fact: "Not a dinosaur. A giant sea lizard, related to today’s monitor lizards and snakes.", // verify
+    herdWith: "stegosaurus",
+    avoid: "dilophosaurus",
   },
   chicken: {
     id: "chicken",
@@ -204,11 +213,12 @@ export const DINOS: Record<DinoId, Dino> = {
       { label: "Cluck", value: 91 },
       { label: "Composure", value: 40 },
     ],
-    era: TODO,
-    lengthM: null,
-    fact: TODO,
-    herdWith: null,
-    avoid: null,
+    era: "Holocene · now", // verify
+    lengthM: 0.4, // verify
+    span: "length",
+    fact: "Birds are living dinosaurs. The chicken is a theropod, like T-rex.", // verify
+    herdWith: "velociraptor",
+    avoid: "trex",
   },
 };
 

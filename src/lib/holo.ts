@@ -1,6 +1,7 @@
 // The holo and prism foils. The single source for their stops: CSS reads them
-// as --holo / --prism, set on <html> from FOIL_CSS_VARS (like MOTION_CSS_VARS),
-// and JS uses them directly for per-pixel sprite tinting.
+// as --holo / --prism (and the repeating --holo-foil), set on <html> from
+// FOIL_CSS_VARS (like MOTION_CSS_VARS), and JS uses them directly for
+// per-pixel sprite tinting.
 
 export type GradientStop = readonly [hex: string, at: number];
 
@@ -27,9 +28,16 @@ export const PRISM_STOPS: readonly GradientStop[] = [
 const toGradient = (stops: readonly GradientStop[]) =>
   `linear-gradient(${GRADIENT_ANGLE}deg, ${stops.map(([hex, at]) => `${hex} ${Math.round(at * 100)}%`).join(", ")})`;
 
+/** One cycle of the repeating foil that sits over a common card, in card design px. */
+export const FOIL_PERIOD = 400;
+
+const toRepeating = (stops: readonly GradientStop[], period: number) =>
+  `repeating-linear-gradient(${GRADIENT_ANGLE}deg, ${stops.map(([hex, at]) => `${hex} ${Math.round(at * period)}px`).join(", ")})`;
+
 export const FOIL_CSS_VARS: Record<string, string> = {
   "--holo": toGradient(HOLO_STOPS),
   "--prism": toGradient(PRISM_STOPS),
+  "--holo-foil": toRepeating(HOLO_STOPS, FOIL_PERIOD),
 };
 
 const toRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));

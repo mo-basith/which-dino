@@ -27,6 +27,7 @@
   --color-ink: #111114;
   --color-card-label: #5a5962;
   --color-rare-face: #0b0b0d;
+  --color-rare-label: rgb(255 255 255 / 0.62); /* rare card label, fact and footer text */
   --color-art: #131316;
 
   /* Radius */
@@ -42,7 +43,7 @@
   --spacing-gutter: 24px; /* phone side margin */
 
   /* Type scale. Headings: 600, -0.035em. */
-  --text-display: 3rem;
+  --text-display: 2.5rem; /* 40 on phones; 56 from 768px up (see :root below) */
   --text-display--line-height: 1.05;
   --text-display--letter-spacing: -0.035em;
   --text-display--font-weight: 600;
@@ -75,6 +76,12 @@
 :root {
   color-scheme: dark;
   /* --holo and --prism are set on <html> from src/lib/holo.ts (the only source). */
+}
+
+@media (width >= 48rem) {
+  :root {
+    --text-display: 3.5rem;
+  }
 }
 
 body {
@@ -211,4 +218,174 @@ body {
    client has restored the right screen (set by an inline script in Quiz.tsx). */
 html[data-quiz-resume] [data-quiz-root] {
   opacity: 0;
+}
+
+/* ── The card (src/components/card) ─────────────────────────────────────────
+   Laid out at 280×350 design px and scaled as a whole. Each face sets its
+   palette as --card-* so the parts below never branch on rarity.
+
+   The tilt layer carries the pointer state, written by Card.tsx:
+   --px / --py  pointer position on the card, 0–1 (0.5 = centre)
+   --rx / --ry  tilt in degrees
+   data-active  pointer over the card (glare brightens)
+   data-egg     tilting towards the top-left corner
+   data-side    front | back */
+@layer components {
+  .card-common {
+    --card-face: var(--color-pearl);
+    --card-ink: var(--color-ink);
+    --card-label: var(--color-card-label);
+    --card-line: rgb(17 17 20 / 0.12);
+    --card-dash: rgb(17 17 20 / 0.28);
+    --card-silhouette: rgb(17 17 20 / 0.8);
+    --card-block-empty: rgb(17 17 20 / 0.12);
+    --card-dino: #ececef;
+    --card-egg: rgb(255 255 255 / 0.4);
+    --card-frame: var(--holo);
+    --card-frame-width: 1px;
+  }
+  .card-rare {
+    --card-face: var(--color-rare-face);
+    --card-ink: var(--color-text);
+    --card-label: var(--color-rare-label);
+    --card-line: rgb(255 255 255 / 0.12);
+    --card-dash: rgb(255 255 255 / 0.24);
+    --card-silhouette: rgb(255 255 255 / 0.75);
+    --card-block-empty: rgb(255 255 255 / 0.12);
+    --card-egg: rgb(255 255 255 / 0.6);
+    --card-frame: var(--prism);
+    --card-frame-width: 2px;
+  }
+
+  .card-stage {
+    perspective: 1000px;
+  }
+
+  .card-tilt {
+    --px: 0.5;
+    --py: 0.5;
+    --rx: 0deg;
+    --ry: 0deg;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx)) rotateY(var(--ry));
+    transition: transform var(--dur-tilt) var(--motion-ease);
+  }
+
+  .card-flip {
+    transform-style: preserve-3d;
+    transition: transform var(--dur-flip) var(--motion-ease);
+    [data-side="back"] > & {
+      transform: rotateY(180deg);
+    }
+  }
+
+  .card-face {
+    backface-visibility: hidden;
+    isolation: isolate;
+  }
+  .card-face-back {
+    transform: rotateY(180deg);
+  }
+
+  /* Foil: a sheet larger than the card that travels ±half of --foil-shift with
+     the pointer. Mirrored on the back, which faces the other way. */
+  .card-foil {
+    --dir: 1;
+    position: absolute;
+    inset: calc(var(--foil-shift) / -2);
+    pointer-events: none;
+    transform: translate(
+      calc((var(--px) - 0.5) * var(--foil-shift) * var(--dir)),
+      calc((var(--py) - 0.5) * var(--foil-shift))
+    );
+    transition: transform var(--dur-tilt) var(--motion-ease);
+    .card-face-back & {
+      --dir: -1;
+    }
+  }
+  .card-foil-common {
+    background-image: var(--holo-foil);
+    mix-blend-mode: multiply;
+    opacity: 0.36;
+  }
+  .card-foil-rare {
+    background-image:
+      repeating-linear-gradient(25deg, rgb(255 255 255 / 0.2) 0 1px, transparent 1px 4px),
+      var(--prism);
+    mix-blend-mode: screen;
+    opacity: 0.18;
+  }
+
+  /* Glare: a soft-light highlight centred on the pointer. Moved with transform. */
+  .card-glare {
+    --dir: 1;
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    left: -100%;
+    top: -100%;
+    pointer-events: none;
+    background-image: radial-gradient(circle 140px, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0));
+    mix-blend-mode: soft-light;
+    opacity: var(--glare-rest);
+    transform: translate(calc((0.5 + (var(--px) - 0.5) * var(--dir)) * 50%), calc(var(--py) * 50%));
+    transition:
+      transform var(--dur-tilt) var(--motion-ease),
+      opacity var(--dur-glare) var(--motion-ease);
+    .card-face-back & {
+      --dir: -1;
+    }
+    [data-active] & {
+      opacity: var(--glare-active);
+    }
+  }
+
+  .card-egg {
+    opacity: 0;
+    transition: opacity var(--dur-fade) var(--motion-ease);
+    [data-egg] & {
+      opacity: 1;
+    }
+  }
+
+  /* The flip control covers the card; its focus ring is the holo hairline. */
+  .card-hit {
+    &:focus-visible {
+      outline: none;
+    }
+    &::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border-radius: calc(var(--radius-card) + 3px);
+      padding: 1px;
+      background: var(--holo);
+      mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      mask-composite: exclude;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-fade) var(--motion-ease);
+    }
+    &:focus-visible::after {
+      opacity: 1;
+    }
+  }
+
+  /* Reduced motion: no flip rotation; the sides crossfade instead. */
+  @media (prefers-reduced-motion: reduce) {
+    .card-flip,
+    [data-side="back"] > .card-flip,
+    .card-face-back {
+      transform: none;
+    }
+    .card-face {
+      transition: opacity var(--dur-reduced) var(--motion-ease);
+    }
+    [data-side="front"] .card-face-back,
+    [data-side="back"] .card-face-front {
+      opacity: 0;
+    }
+  }
 }
