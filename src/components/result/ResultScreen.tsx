@@ -2,29 +2,46 @@
 
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CardScale, InteractiveCard } from "@/components/card/Card";
+import { FlipPill, useCardFlip } from "@/components/card/FlipPill";
 import { Brand, HoloChip, TopBar } from "@/components/quiz/parts";
 import { DINOS, type DinoId } from "@/data/dinos";
-import type { CardRow } from "@/lib/card";
-import { TIMING, ms } from "@/lib/motion";
-import { SETTLE_ITEMS, reducedSchedule, revealSchedule, settleDelay, shufflePath, type RevealPhase } from "@/lib/reveal";
+import { CARD, type CardRow } from "@/lib/card";
+import { TIMING, ms, tempoCssVars, type RevealTempo, type TempoId } from "@/lib/motion";
+import {
+  SETTLE_ITEMS,
+  nameDelay,
+  reducedSchedule,
+  revealSchedule,
+  settleDelay,
+  shufflePath,
+  stageWidth,
+  type RevealPhase,
+} from "@/lib/reveal";
 import { withArticle } from "@/lib/share";
 import { useReducedMotion } from "@/lib/useReducedMotion";
 import { ShareActions } from "./ShareActions";
 import { Sleeve } from "./Sleeve";
 
-// The result screen, and the reveal ("R2 Shuffle") that settles into it. One
+// The result screen, and the reveal ("R2 Shuffle") that plays into it. One
 // state machine; `revealing` is a synchronous lock so a skip can't double-fire.
 //
-// wait     the face-down sleeve shows its "?"          (TIMING.revealWait)
-// shuffle  silhouettes swap at TIMING.shuffleSteps, ending on the winner
+// wait     the face-down sleeve shows its "?"
+// shuffle  silhouettes swap at the tempo's shuffleSteps, ending on the winner
 // land     the card grows to landScale; rares turn the frame prism and hold rareBeat longer
-// flip     sleeve → card front, a white flash at the halfway turn; the glow brightens
-// settle   the title rises in, then the chip, one-liner, actions and retake
-// done     the sleeve is gone; the card is the normal interactive card, in the same spot
+// flip     sleeve → card front, a white flash at the edge-on moment; the glow brightens
+// hold     (staged) the face-up card holds at stage size
+// dock     (staged) the card moves and scales into its slot; the scrim lifts
+// settle   the title rises in, then the flip pill, chip, one-liner, actions, retake
+// done     the card is the normal interactive card, in its slot
+//
+// Staged tempos (B, C) play wait → hold big in the middle of the viewport:
+// the card renders at its slot size (exactly 280 or 560) and a measured
+// translate + scale puts it on the stage, so docking is just dropping that
+// transform. Unstaged (A) plays everything in the slot.
 //
 // Mode "turn" is the full sequence. Mode "fade" crossfades the sleeve to the
-// card and fades the text in with no travel: reduced motion (after the "?"
-// waits) and skip (a tap on the card, or Enter / Space on it).
+// card and fades everything else in, with no travel: reduced motion (no
+// stage, after the "?" waits) and skip (a tap on the card, or Enter / Space).
 
 // The top bar's mark. Fixed through the reveal so it never gives the winner away.
 const MARK: DinoId = "triceratops";
@@ -44,20 +61,16 @@ type State = {
 
 type Action =
   | { type: "shuffle"; step: number }
-  | { type: "land" }
-  | { type: "flip" }
+  | { type: "phase"; phase: "land" | "flip" | "hold" | "dock" | "done" }
   | { type: "flash"; on: boolean }
-  | { type: "settle"; mode?: Mode; crossfade?: number }
-  | { type: "done" };
+  | { type: "settle"; mode?: Mode; crossfade?: number };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "shuffle":
       return { ...state, phase: "shuffle", step: action.step };
-    case "land":
-      return { ...state, phase: "land" };
-    case "flip":
-      return { ...state, phase: "flip" };
+    case "phase":
+      return { ...state, phase: action.phase };
     case "flash":
       return { ...state, flash: action.on };
     case "settle":
@@ -68,13 +81,28 @@ function reducer(state: State, action: Action): State {
         mode: action.mode ?? state.mode,
         crossfade: action.crossfade ?? state.crossfade,
       };
-    case "done":
-      return { ...state, phase: "done" };
   }
 }
 
-const ORDER: RevealPhase[] = ["wait", "shuffle", "land", "flip", "settle", "done"];
+const ORDER: RevealPhase[] = ["wait", "shuffle", "land", "flip", "hold", "dock", "settle", "done"];
 const atLeast = (phase: RevealPhase, than: RevealPhase) => ORDER.indexOf(phase) >= ORDER.indexOf(than);
+
+/** Where the staged card sits: a transform from its slot to the middle of the viewport. */
+type Stage = { x: number; y: number; scale: number; top: number };
+
+function measureStage(slot: HTMLElement): Stage {
+  const rect = slot.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  const vh = window.innerHeight;
+  const width = stageWidth(vw, vh);
+  const height = (width * CARD.height) / CARD.width;
+  return {
+    x: vw / 2 - (rect.left + rect.width / 2),
+    y: vh / 2 - (rect.top + rect.height / 2),
+    scale: width / rect.width,
+    top: (vh - height) / 2,
+  };
+}
 
 type ResultScreenProps = {
   dinoId: DinoId;
@@ -82,17 +110,30 @@ type ResultScreenProps = {
   hatchedAt: Date;
   /** Play the reveal. Without it (a refresh, history), the result shows settled. */
   reveal: boolean;
+  /** Which reveal tempo (TIMING.reveal). */
+  tempo?: TempoId;
   onRetake: () => void;
   /** Called once the result has fully settled. */
   onSettled?: () => void;
 };
 
-export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSettled }: ResultScreenProps) {
+export function ResultScreen({
+  dinoId,
+  rows,
+  hatchedAt,
+  reveal,
+  tempo: tempoId = TIMING.revealTempo,
+  onRetake,
+  onSettled,
+}: ResultScreenProps) {
   const dino = DINOS[dinoId];
   const rare = dino.rarity === "rare";
   const reduced = useReducedMotion();
+  const tempo: RevealTempo = TIMING.reveal[tempoId];
+  // Fixed at mount, like the timeline: whether this reveal plays on the stage.
+  const [staged] = useState(() => reveal && tempo.staged && !reduced);
 
-  const [path] = useState(() => shufflePath(dinoId));
+  const [path] = useState(() => shufflePath(dinoId, Math.random, tempo.shuffleSteps.length));
   const [state, dispatch] = useReducer(reducer, {
     phase: reveal ? "wait" : "done",
     step: -1,
@@ -101,13 +142,15 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
     crossfade: TIMING.reduced,
   });
   const { phase, step, mode, flash, crossfade } = state;
+  const { controls: cardControls, side, onSideChange, flip } = useCardFlip();
 
   // Synchronous lock: true while the reveal plays. Skip and the timeline both claim it.
   const revealing = useRef(reveal);
   const timeouts = useRef<number[]>([]);
   const skipRef = useRef<HTMLButtonElement>(null);
   const handFocus = useRef(false);
-  const stageRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const [stage, setStage] = useState<Stage | null>(null);
 
   const cancelAll = () => {
     timeouts.current.forEach((id) => window.clearTimeout(id));
@@ -117,7 +160,7 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
     timeouts.current.push(window.setTimeout(fn, time));
   };
 
-  // Opening removes the skip control. Note now (before it goes) whether it had focus.
+  // Settling removes the skip control. Note now (before it goes) whether it had focus.
   const settle = (mode?: Mode, fade?: number) => {
     handFocus.current = document.activeElement === skipRef.current;
     dispatch({ type: "settle", mode, crossfade: fade });
@@ -126,25 +169,45 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
   const finish = (after: number) => {
     at(after, () => {
       revealing.current = false;
-      dispatch({ type: "done" });
+      dispatch({ type: "phase", phase: "done" });
       onSettled?.();
     });
   };
 
+  // Staged: put the card on the stage before the first paint, and keep it
+  // there if the viewport changes, until it docks.
+  const onStage = staged && mode === "turn" && !atLeast(phase, "dock");
+  useLayoutEffect(() => {
+    if (!onStage) return;
+    const place = () => slotRef.current && setStage(measureStage(slotRef.current));
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, { passive: true });
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place);
+    };
+  }, [onStage]);
+
   // Play the timeline once, from the moment the screen mounts.
   useEffect(() => {
     if (!revealing.current) return;
+    if (staged) window.scrollTo(0, 0);
     if (reduced) {
-      const s = reducedSchedule();
+      const s = reducedSchedule(tempo);
       at(s.settle, () => settle("fade", TIMING.reduced));
       finish(s.done);
     } else {
-      const s = revealSchedule(rare);
+      const s = revealSchedule(rare, tempo);
       s.shuffle.forEach((time, i) => at(time, () => dispatch({ type: "shuffle", step: i })));
-      at(s.land, () => dispatch({ type: "land" }));
-      at(s.flip, () => dispatch({ type: "flip" }));
+      at(s.land, () => dispatch({ type: "phase", phase: "land" }));
+      at(s.flip, () => dispatch({ type: "phase", phase: "flip" }));
       at(s.flash, () => dispatch({ type: "flash", on: true }));
-      at(s.flash + TIMING.flashPulse / 2, () => dispatch({ type: "flash", on: false }));
+      at(s.flash + tempo.flashPulse / 2, () => dispatch({ type: "flash", on: false }));
+      if (staged) {
+        at(s.hold, () => dispatch({ type: "phase", phase: "hold" }));
+        at(s.dock, () => dispatch({ type: "phase", phase: "dock" }));
+      }
       at(s.settle, () => settle());
       finish(s.done);
     }
@@ -160,20 +223,28 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
     finish(TIMING.skipFade);
   };
 
-  const open = atLeast(phase, "settle");
+  // The card is face up (turned, rotations dropped) from the end of the flip;
+  // the text and the card's own controls come in at the settle.
+  const open = mode === "fade" ? atLeast(phase, "settle") : atLeast(phase, staged ? "hold" : "settle");
+  const shown = atLeast(phase, "settle");
+  // Turn mode: the sleeve faces away once the card is open, so it can go.
+  // Fade mode: it stays to fade out over the card.
+  const sleeve = mode === "fade" ? phase !== "done" : !open;
 
-  // The skip control goes away when the card opens. If it had focus, hand
-  // focus to the card's flip button rather than dropping it on the page.
+  // The skip control goes away at the settle. If it had focus, hand focus to
+  // the card's flip button rather than dropping it on the page.
   useLayoutEffect(() => {
-    if (!open || !handFocus.current) return;
+    if (!shown || !handFocus.current) return;
     handFocus.current = false;
-    stageRef.current?.querySelector<HTMLElement>("[data-card-flip]")?.focus({ preventScroll: true });
-  }, [open]);
+    slotRef.current?.querySelector<HTMLElement>("[data-card-flip]")?.focus({ preventScroll: true });
+  }, [shown]);
 
-  const title = `You’re ${withArticle(dino.name)}.`;
-  const vars = {
-    "--dur-crossfade": ms(crossfade),
-  } as CSSProperties;
+  // "You’re a" / "T-rex." (the article from withArticle, so "an" where needed).
+  const lead = `You’re ${withArticle(dino.name).split(" ")[0]}`;
+  const name = `${dino.name}.`;
+  const vars = { ...tempoCssVars(tempo), "--dur-crossfade": ms(crossfade) } as CSSProperties;
+  const moverStyle: CSSProperties | undefined =
+    onStage && stage ? { transform: `translate(${stage.x}px, ${stage.y}px) scale(${stage.scale})` } : undefined;
 
   return (
     <div
@@ -181,75 +252,123 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
       data-phase={phase}
       data-mode={mode}
       data-open={open || undefined}
+      data-shown={shown || undefined}
+      data-staged={staged || undefined}
+      data-on-stage={onStage || undefined}
       style={vars}
     >
-      <TopBar left={<Brand mark={MARK} />} />
+      <div className="reveal-dim">
+        <TopBar left={<Brand mark={MARK} />} />
+      </div>
       <p className="sr-only" role="status">
-        {open ? title : "Shuffling the herd…"}
+        {shown ? `${lead} ${name}` : "Shuffling the herd…"}
       </p>
 
-      <div className="flex flex-1 flex-col items-center lg:flex-row lg:justify-center lg:gap-24">
-        <div className="relative mt-8 short:mt-4 lg:mt-0">
-          <div
-            aria-hidden
-            className="reveal-glow bg-glow pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[160%] w-[200%] -translate-x-1/2 -translate-y-1/2 [--glow-alpha:0.16]"
-          />
-          <CardScale width="result">
-            <div ref={stageRef} className="reveal-land size-full" data-landed={phase === "land" || undefined}>
-              <div className="reveal-turn relative size-full" data-turned={atLeast(phase, "flip") || undefined}>
-                <div className="reveal-card absolute inset-0" inert={!open} aria-hidden={!open || undefined}>
-                  <InteractiveCard dinoId={dinoId} rows={rows} hatchedAt={hatchedAt} />
-                  <div className="reveal-flash" data-on={flash || undefined} />
-                </div>
-                {/* After the card, so in fade mode the sleeve sits on top and fades out over it. */}
-                {phase !== "done" && (
-                  <div className="reveal-sleeve absolute inset-0" aria-hidden>
-                    <Sleeve dinoId={step >= 0 ? path[step] : null} rare={rare && atLeast(phase, "land")} />
-                    <div className="reveal-flash" data-on={flash || undefined} />
-                  </div>
-                )}
-              </div>
-            </div>
-            {!open && (
-              <button
-                ref={skipRef}
-                type="button"
-                aria-label="Skip to your card"
-                onClick={skip}
-                className="card-hit absolute inset-0 cursor-pointer rounded-card"
+      {staged && phase !== "done" && (
+        <>
+          <div aria-hidden className="reveal-scrim pointer-events-none fixed inset-0 z-10 bg-ground/60" />
+          {stage && (
+            <>
+              <div
+                aria-hidden
+                className="reveal-stage-glow bg-glow pointer-events-none fixed top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 [--glow-alpha:0.2]"
+                style={{ width: `${2 * stage.scale * CARD.width}px`, height: `${2 * stage.scale * CARD.height}px` }}
               />
-            )}
-          </CardScale>
+              <p
+                aria-hidden
+                className="reveal-caption pointer-events-none fixed inset-x-0 z-20 grid h-8 place-items-center font-mono text-label text-text-2"
+                style={{ top: `calc(${stage.top}px - 48px)` }}
+              >
+                Shuffling the herd…
+              </p>
+            </>
+          )}
+        </>
+      )}
+
+      <div className="flex flex-1 flex-col items-center desk:flex-row desk:justify-center desk:gap-24">
+        <div className="mt-8 flex flex-col items-center short:mt-4 desk:mt-0">
+          <div ref={slotRef} className="relative">
+            <div
+              aria-hidden
+              className="reveal-glow bg-glow pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[160%] w-[200%] -translate-x-1/2 -translate-y-1/2 [--glow-alpha:0.16]"
+            />
+            <div className="reveal-mover relative z-20" style={moverStyle}>
+              <CardScale width="result">
+                <div className="reveal-land size-full" data-landed={phase === "land" || undefined}>
+                  <div className="reveal-turn relative size-full" data-turned={atLeast(phase, "flip") || undefined}>
+                    <div className="reveal-card absolute inset-0" inert={!shown} aria-hidden={!shown || undefined}>
+                      <InteractiveCard
+                        dinoId={dinoId}
+                        rows={rows}
+                        hatchedAt={hatchedAt}
+                        ref={cardControls}
+                        onSideChange={onSideChange}
+                      />
+                      <div className="reveal-flash" data-on={flash || undefined} />
+                    </div>
+                    {/* After the card, so in fade mode the sleeve sits on top and fades out over it. */}
+                    {sleeve && (
+                      <div className="reveal-sleeve absolute inset-0" aria-hidden>
+                        <Sleeve dinoId={step >= 0 ? path[step] : null} rare={rare && atLeast(phase, "land")} />
+                        <div className="reveal-flash" data-on={flash || undefined} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {!shown && (
+                  <button
+                    ref={skipRef}
+                    type="button"
+                    aria-label="Skip to your card"
+                    onClick={skip}
+                    className="card-hit absolute inset-0 cursor-pointer rounded-card"
+                  />
+                )}
+              </CardScale>
+            </div>
+          </div>
+          <Item tempo={tempo} index={0} className="mt-4" inert={!shown}>
+            <FlipPill side={side} onFlip={flip} />
+          </Item>
         </div>
 
         <div
-          className="relative mt-8 short:mt-6 flex w-full flex-1 flex-col items-center text-center lg:mt-0 lg:w-auto lg:max-w-column lg:flex-none lg:items-start lg:text-left"
-          inert={!open}
-          aria-hidden={!open || undefined}
+          className="relative mt-6 flex w-full flex-1 flex-col items-center text-center short:mt-4 desk:mt-0 desk:w-auto desk:max-w-column desk:flex-none desk:items-start desk:text-left"
+          inert={!shown}
+          aria-hidden={!shown || undefined}
         >
-          <p
-            aria-hidden
-            className="reveal-caption absolute inset-x-0 top-0 grid h-8 place-items-center font-mono text-label text-text-2 lg:justify-items-start"
-          >
-            Shuffling the herd…
-          </p>
-          <Item index={0}>
+          {!staged && (
+            <p
+              aria-hidden
+              className="reveal-caption absolute inset-x-0 top-0 grid h-8 place-items-center font-mono text-label text-text-2 desk:justify-items-start"
+            >
+              Shuffling the herd…
+            </p>
+          )}
+          <Item tempo={tempo} index={1}>
             <HoloChip>{rare ? "Rare · New" : "New"}</HoloChip>
           </Item>
-          <Item title>
-            <h1 className="mt-4 text-title text-balance lg:text-display">{title}</h1>
+          <h1 className="mt-4 text-title text-balance desk:text-display">
+            {/* Unstaged: one line rising together. Staged: "You're a", then the name, rising further. */}
+            <Item tempo={tempo} part="lead" as="span">
+              {lead}
+            </Item>{" "}
+            <Item tempo={tempo} part="name" as="span">
+              {name}
+            </Item>
+          </h1>
+          <Item tempo={tempo} index={2}>
+            <p className="mt-2 max-w-measure text-body text-pretty text-text-2 desk:max-w-column">{dino.oneLiner}</p>
           </Item>
-          <Item index={1}>
-            <p className="mt-2 text-body text-pretty text-text-2">{dino.oneLiner}</p>
-          </Item>
-          <Item index={2} className="mt-6 w-full">
+          <Item tempo={tempo} index={3} className="mt-6 w-full">
             <ShareActions dinoId={dinoId} />
           </Item>
-          <Item index={3} className="mt-auto pt-8 pb-6 short:pt-4 short:pb-4 lg:mt-6 lg:pt-0 lg:pb-0">
+          <Item tempo={tempo} index={4} className="mt-auto pt-8 pb-6 short:pt-4 short:pb-4 desk:mt-6 desk:pt-0 desk:pb-0">
             <button
               type="button"
               onClick={onRetake}
-              className="press holo-ring rounded-control px-2 py-3 text-body text-text-2 lg:-ml-2"
+              className="press holo-ring rounded-control px-2 py-3 text-body text-text-2 desk:-ml-2"
             >
               Retake the quiz
             </button>
@@ -260,29 +379,34 @@ export function ResultScreen({ dinoId, rows, hatchedAt, reveal, onRetake, onSett
   );
 }
 
-/**
- * One piece of the settle: rises in after its stagger. The title is first;
- * the rest follow in SETTLE_ITEMS order.
- */
-function Item({
-  index,
-  title = false,
-  className = "",
-  children,
-}: {
+type ItemProps = {
+  tempo: RevealTempo;
+  /** A settle item (SETTLE_ITEMS order), or a part of the title. */
   index?: number;
-  title?: boolean;
+  part?: "lead" | "name";
+  as?: "div" | "span";
   className?: string;
+  inert?: boolean;
   children: ReactNode;
-}) {
-  const style = (
-    title
-      ? { "--rise": `${TIMING.titleRise}px`, "--dur": ms(TIMING.titleIn), "--delay": "0ms" }
-      : { "--rise": `${TIMING.restRise}px`, "--dur": ms(TIMING.restIn), "--delay": ms(settleDelay(index ?? 0)) }
-  ) as CSSProperties;
+};
+
+/** One piece of the settle: rises in after its stagger (see reveal.ts). */
+function Item({ tempo, index = 0, part, as: Tag = "div", className = "", inert, children }: ItemProps) {
+  const timing =
+    part === "lead"
+      ? { rise: tempo.staged ? tempo.leadRise : tempo.titleRise, dur: tempo.titleIn, delay: 0 }
+      : part === "name"
+        ? { rise: tempo.titleRise, dur: tempo.titleIn, delay: nameDelay(tempo) }
+        : { rise: tempo.restRise, dur: tempo.restIn, delay: settleDelay(tempo, index) };
+  const style = { "--rise": `${timing.rise}px`, "--dur": ms(timing.dur), "--delay": ms(timing.delay) } as CSSProperties;
   return (
-    <div className={`reveal-item ${className}`} style={style} data-item={title ? "title" : SETTLE_ITEMS[index ?? 0]}>
+    <Tag
+      className={`reveal-item ${Tag === "span" ? "inline-block" : ""} ${className}`}
+      style={style}
+      data-item={part ?? SETTLE_ITEMS[index]}
+      inert={inert}
+    >
       {children}
-    </div>
+    </Tag>
   );
 }

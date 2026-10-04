@@ -37,7 +37,12 @@
 
   /* Layout */
   --container-column: 440px; /* the phone column, centred on wider screens */
-  --container-wide: 1200px; /* two-column desktop screens (the result), from 1024px */
+  --container-wide: 1200px; /* two-column desktop screens (result, shared card), from 900px */
+  --container-question: 520px; /* the question column on desktop, from 900px */
+  --container-measure: 300px; /* a centred line of body text on phones (the result one-liner) */
+
+  /* Breakpoints: Tailwind's defaults, plus desk (900px) where screens go two-column. */
+  --breakpoint-desk: 56.25rem;
 
   /* Spacing: Tailwind's 4px base; stay on even steps (8px grid) */
   --spacing-gutter: 24px; /* phone side margin */
@@ -83,9 +88,60 @@
 /* Devices with a fine pointer that can hover (i.e. probably a keyboard too). */
 @custom-variant can-hover (@media (hover: hover) and (pointer: fine));
 
+/* Fallbacks shown while Geist loads, tuned so nothing changes size when it
+   swaps in. size-adjust is Geist's width over the local font's, measured on
+   this app's own copy in Chrome; ascent/descent are Geist's (1.005 / 0.295 em)
+   divided by it. Arial has no medium, so 500 gets its own wider adjust; 600+
+   maps to Arial Bold. Re-measure if the copy or the fonts change a lot. */
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial"), local("ArialMT");
+  font-weight: 100 449;
+  size-adjust: 102.91%;
+  ascent-override: 97.66%;
+  descent-override: 28.67%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial"), local("ArialMT");
+  font-weight: 450 549;
+  size-adjust: 105.39%;
+  ascent-override: 95.36%;
+  descent-override: 27.99%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Fallback";
+  src: local("Arial Bold"), local("Arial-BoldMT");
+  font-weight: 550 900;
+  size-adjust: 100.48%;
+  ascent-override: 100.02%;
+  descent-override: 29.36%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Menlo Regular"), local("Menlo-Regular");
+  font-weight: 100 549;
+  size-adjust: 99.66%;
+  ascent-override: 100.84%;
+  descent-override: 29.6%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Geist Mono Fallback";
+  src: local("Menlo Bold"), local("Menlo-Bold");
+  font-weight: 550 900;
+  size-adjust: 99.66%;
+  ascent-override: 100.84%;
+  descent-override: 29.6%;
+  line-gap-override: 0%;
+}
+
 @theme inline {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: var(--font-geist-sans), "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono Fallback", ui-monospace, monospace;
   /* Value comes from EASE in src/lib/motion.ts via <html> style */
   --ease-g: var(--motion-ease);
 }
@@ -212,6 +268,10 @@ body {
     opacity: 0;
     transform: translateX(calc(var(--q-shift) * var(--q-dir)));
     transition-duration: 0s;
+  }
+  /* Arriving at the result: fade only (its reveal measures against the viewport). */
+  &[data-fade] {
+    transform: none;
   }
   @media (prefers-reduced-motion: reduce) {
     transition-duration: var(--dur-reduced);
@@ -467,7 +527,7 @@ html[data-quiz-resume] [data-quiz-root] {
   }
   .reveal-turn {
     transform-style: preserve-3d;
-    transition: transform var(--dur-reveal-flip) var(--motion-ease);
+    transition: transform var(--dur-reveal-flip) var(--flip-ease);
     &[data-turned] {
       transform: rotateY(180deg);
     }
@@ -480,7 +540,8 @@ html[data-quiz-resume] [data-quiz-root] {
     transform: rotateY(180deg);
   }
   /* Open: the turn is complete, so drop both rotations at once (they cancel
-     out) and the card is just the card, in the same spot. */
+     out) and the card is just the card, in the same spot. (The sleeve is
+     unmounted in turn mode by then.) */
   .reveal[data-open] {
     .reveal-turn,
     .reveal-card {
@@ -538,6 +599,54 @@ html[data-quiz-resume] [data-quiz-root] {
     transition-duration: var(--dur-crossfade);
   }
 
+  /* Staged (tempos B, C): the card plays big in the middle of the viewport,
+     via an inline translate + scale on .reveal-mover (from ResultScreen), over
+     a scrim and a stronger glow, with the top bar dimmed. Dock drops the
+     transform over --dur-dock while the scrim and stage glow fade and the top
+     bar comes back. Skip (fade mode) snaps it and fades them. */
+  .reveal-mover {
+    transform-origin: center;
+  }
+  .reveal[data-phase="dock"] .reveal-mover {
+    transition: transform var(--dur-dock) var(--motion-ease);
+  }
+  .reveal[data-staged] {
+    .reveal-dim,
+    .reveal-scrim,
+    .reveal-stage-glow,
+    .reveal-glow {
+      transition: opacity var(--dur-dock) var(--motion-ease);
+    }
+    .reveal-stage-glow {
+      opacity: 0.5;
+    }
+    &[data-phase="flip"] .reveal-stage-glow,
+    &[data-phase="hold"] .reveal-stage-glow {
+      opacity: 1;
+      transition-duration: var(--dur-reveal-flip);
+    }
+    &[data-on-stage] {
+      .reveal-dim {
+        opacity: 0.4;
+      }
+      .reveal-glow {
+        opacity: 0;
+      }
+    }
+    &:not([data-on-stage]) {
+      .reveal-scrim,
+      .reveal-stage-glow {
+        opacity: 0;
+      }
+      .reveal-glow {
+        opacity: 1;
+      }
+    }
+    &[data-mode="fade"] :is(.reveal-dim, .reveal-scrim, .reveal-stage-glow, .reveal-glow) {
+      transition-duration: var(--dur-crossfade);
+    }
+  }
+
   /* Settle: each item rises --rise px and fades in over --dur after --delay
      (set per item from TIMING). Fade mode: all at once, no travel. */
   .reveal-item {
@@ -546,7 +655,7 @@ html[data-quiz-resume] [data-quiz-root] {
     transition-duration: var(--dur);
     transition-delay: var(--delay);
   }
-  .reveal:not([data-open]) .reveal-item {
+  .reveal:not([data-shown]) .reveal-item {
     opacity: 0;
     transform: translateY(var(--rise));
     transition: none;

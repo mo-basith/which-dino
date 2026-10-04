@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useReducer, useRef, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useReducer,
+  useRef,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { DINOS, type DinoId } from "@/data/dinos";
 import { CARD, type CardRow } from "@/lib/card";
 import { TIMING } from "@/lib/motion";
@@ -66,6 +75,15 @@ export function CardScale({ width, className = "", children }: { width: CardWidt
 
 type Faces = Omit<CardProps, "mode" | "width" | "className">;
 
+/** Drive an interactive card from outside (the flip pill), through the same lock as a tap. */
+export type CardControls = { flip: () => void };
+
+type InteractiveProps = Faces & {
+  ref?: Ref<CardControls>;
+  /** Called when the card starts turning to a side. */
+  onSideChange?: (side: Side) => void;
+};
+
 // Static: no tilt, no flip, no handlers; the foil rests slightly off centre.
 const STATIC_FOIL = { "--px": 0.35, "--py": 0.3 } as CSSProperties;
 
@@ -105,7 +123,7 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 // Pointer within this fraction of the top-left corner reveals the egg.
 const EGG_CORNER = 0.25;
 
-export function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Faces) {
+export function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front", ref, onSideChange }: InteractiveProps) {
   const [state, dispatch] = useReducer(reducer, { side, phase: "idle" });
   const busy = useRef(false);
   const timer = useRef<number>(undefined);
@@ -113,6 +131,9 @@ export function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front
   const reduced = useReducedMotion();
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => {
+    onSideChange?.(state.side);
+  }, [state.side, onSideChange]);
 
   const flip = () => {
     if (busy.current) return;
@@ -124,6 +145,8 @@ export function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front
       dispatch({ type: "settle" });
     }, duration);
   };
+
+  useImperativeHandle(ref, () => ({ flip }));
 
   // Tilt, foil and glare follow a desktop pointer only, written straight to
   // CSS variables so moving the pointer never re-renders. Touch just flips.

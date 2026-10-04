@@ -123,7 +123,7 @@ function AnswerRow({ index, text, state, onClick }: AnswerRowProps) {
       onClick={onClick}
       aria-pressed={picked}
       aria-keyshortcuts={String(index + 1)}
-      className={`press holo-ring group relative flex h-15 w-full items-center justify-between gap-4 rounded-control border border-line bg-raised-1 px-4 text-left text-body ${
+      className={`press holo-ring group relative flex h-15 w-full desk:h-16 items-center justify-between gap-4 rounded-control border border-line bg-raised-1 px-4 text-left text-body ${
         state === "dimmed" ? "opacity-50" : ""
       }`}
     >

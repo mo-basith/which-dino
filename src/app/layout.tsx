@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import { FOIL_CSS_VARS } from "@/lib/holo";
 import { MOTION_CSS_VARS } from "@/lib/motion";
+import { geistMono, geistSans } from "./fonts";
 import "./globals.css";
 
 // Absolute URLs for link previews: the production domain on Vercel, else local.
@@ -30,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       style={{ ...MOTION_CSS_VARS, ...FOIL_CSS_VARS } as CSSProperties}
       // The quiz's inline resume script may set data-quiz-resume before hydration.
       suppressHydrationWarning

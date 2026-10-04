@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card } from "@/components/card/Card";
+import { FlippableCard } from "@/components/card/FlipPill";
 import { Brand, PRIMARY, TopBar } from "@/components/quiz/parts";
 import { DINO_IDS, DINOS, type Dino, type DinoId } from "@/data/dinos";
 import { backRows } from "@/lib/card";
@@ -35,22 +35,29 @@ export default async function SharedCardPage({ params }: PageProps<"/c/[id]">) {
 
   return (
     <div className="overflow-x-clip">
-      <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter">
+      <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter desk:max-w-wide">
         <TopBar left={<Brand mark="velociraptor" />} />
-        <div className="relative mt-8 self-center short:mt-4">
-          <div
-            aria-hidden
-            className="bg-glow pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[160%] w-[200%] -translate-x-1/2 -translate-y-1/2 [--glow-alpha:0.14]"
-          />
-          <Card dinoId={dino.id} rows={backRows(dino.id)} mode="interactive" width="interactive" />
-        </div>
-        <h1 className="mt-10 short:mt-6 text-center text-title text-balance">A friend is {withArticle(dino.name)}.</h1>
-        <p className="mt-2 text-center text-body text-text-2">Now find out which one you are.</p>
-        <div className="mt-auto pt-8 pb-8">
-          <Link href="/?start" className={PRIMARY}>
-            Which dino am I?
-          </Link>
-          <p className="mt-4 text-center font-mono text-label text-text-3">Six questions · about a minute</p>
+        {/* Phone: one column, the button at the bottom. From 900px: card left, text right. */}
+        <div className="flex flex-1 flex-col desk:flex-row desk:items-center desk:justify-center desk:gap-24">
+          <div className="relative mt-8 self-center short:mt-4 desk:mt-0">
+            <div
+              aria-hidden
+              className="bg-glow pointer-events-none absolute top-[40%] left-1/2 -z-10 h-[140%] w-[200%] -translate-x-1/2 -translate-y-1/2 [--glow-alpha:0.14]"
+            />
+            <FlippableCard dinoId={dino.id} rows={backRows(dino.id)} width="result" />
+          </div>
+          <div className="flex flex-1 flex-col desk:w-full desk:max-w-column desk:flex-none">
+            <h1 className="mt-8 text-center text-title text-balance short:mt-6 desk:mt-0 desk:text-left desk:text-display">
+              A friend is {withArticle(dino.name)}.
+            </h1>
+            <p className="mt-2 text-center text-body text-text-2 desk:text-left">Now find out which one you are.</p>
+            <div className="mt-auto pt-8 pb-8 desk:mt-8 desk:pt-0 desk:pb-0">
+              <Link href="/?start" className={PRIMARY}>
+                Which dino am I?
+              </Link>
+              <p className="mt-4 text-center font-mono text-label text-text-3 desk:text-left">Six questions · about a minute</p>
+            </div>
+          </div>
         </div>
       </main>
     </div>
