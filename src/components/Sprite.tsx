@@ -13,6 +13,8 @@ type SpriteProps = {
   size: SpriteSize;
   /** Any CSS colour (vars work), or "holo" to tint each pixel by its place on the holo gradient. */
   color?: string;
+  /** With color="holo": the part of the gradient (start, end; 0–1) the sprite spans. The whole run by default. */
+  holoRange?: readonly [start: number, end: number];
   /** Draw 'r' pixels in the main colour instead of the accent. */
   silhouette?: boolean;
   /** Draw each pixel as its own square with a 1px gap (the faint idle look). Needs scale ≥ 2. */
@@ -67,6 +69,7 @@ export function Sprite({
   id,
   size,
   color = "var(--color-text)",
+  holoRange = [0, 1],
   silhouette = false,
   cells = false,
   accent = SPRITE_ACCENT,
@@ -110,7 +113,10 @@ export function Sprite({
                 fill={
                   isAccent(char)
                     ? accent
-                    : colorAt(HOLO_STOPS, positionAlong(x + i + 0.5, y + 0.5, cols, rows))
+                    : colorAt(
+                        HOLO_STOPS,
+                        holoRange[0] + (holoRange[1] - holoRange[0]) * positionAlong(x + i + 0.5, y + 0.5, cols, rows),
+                      )
                 }
               />
             )),

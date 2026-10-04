@@ -53,10 +53,13 @@ export const blockHoloAt = (index: number) => (BAR_HOLO_SPAN * (index + 0.5)) / 
 export const formatHatched = (date: Date) =>
   `${two(date.getDate())}.${two(date.getMonth() + 1)}.${two(date.getFullYear() % 100)}`;
 
-/** The front footer: "SAM · 03.10.26", or just the date with no holder. */
-export function holderLine(holder: string | undefined, hatchedAt: Date) {
+/**
+ * The front footer: "SAM · 03.10.26", just the date with no holder, or just
+ * the name with no date (a friend's card arriving by link has neither yet).
+ */
+export function holderLine(holder: string | undefined, hatchedAt: Date | undefined) {
   const name = holder?.trim().toUpperCase();
-  return name ? `${name} · ${formatHatched(hatchedAt)}` : formatHatched(hatchedAt);
+  return [name, hatchedAt && formatHatched(hatchedAt)].filter(Boolean).join(" · ");
 }
 
 /** The scale bar: "12 M", "0.4 M", "1 M WINGSPAN". */
@@ -82,4 +85,17 @@ export function artScale(id: DinoId) {
   const room = contentWidth(DINOS[id].rarity) - ART.roomX;
   const fit = Math.min(room / cols, (ART.height - ART.roomY) / grid.length);
   return Math.max(1, Math.min(ART.maxScale, Math.floor(fit)));
+}
+
+/**
+ * The face-down sleeve: a dashed border inset 14px, the box the reveal's
+ * silhouettes fit (centred on the card), and the "?" mark's scale.
+ */
+export const SLEEVE = { inset: 14, artWidth: 160, artHeight: 112, markScale: 8 } as const;
+
+/** The largest whole-number scale at which a dino's silhouette fits the sleeve's art box. */
+export function sleeveScale(id: DinoId) {
+  const grid = SPRITES[id];
+  const cols = Math.max(...grid.map((row) => row.length));
+  return Math.max(1, Math.floor(Math.min(SLEEVE.artWidth / cols, SLEEVE.artHeight / grid.length)));
 }

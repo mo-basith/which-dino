@@ -36,7 +36,6 @@ const CARD: Swatch[] = [
   { name: "ink", value: "#111114", className: "bg-ink" },
   { name: "card-label", value: "#5A5962", className: "bg-card-label" },
   { name: "rare-face", value: "#0B0B0D", className: "bg-rare-face" },
-  { name: "art-window", value: "#131316 + dots", className: "bg-art-window" },
 ];
 
 const FOILS: Swatch[] = [
@@ -216,7 +215,7 @@ export default function DevPage() {
                   {dino.number} · {dino.rarity}
                 </p>
               </div>
-              <div className="bg-art-window grid grid-cols-[auto_auto_auto] items-end justify-start gap-x-6 gap-y-4 overflow-x-auto rounded-control p-4">
+              <div className="bg-raised-2 grid grid-cols-[auto_auto_auto] items-end justify-start gap-x-6 gap-y-4 overflow-x-auto rounded-control p-4">
                 {SPRITE_MODES.flatMap((m) =>
                   SPRITE_SIZES.map((s) => (
                     <figure key={`${m.name}-${s.name}`} className="flex flex-col items-start gap-1">

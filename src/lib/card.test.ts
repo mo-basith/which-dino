@@ -81,6 +81,8 @@ test("hatch date and holder line", () => {
   assert.equal(holderLine("Sam", date), "SAM · 03.10.26");
   assert.equal(holderLine("  ", date), "03.10.26");
   assert.equal(holderLine(undefined, date), "03.10.26");
+  assert.equal(holderLine("Sam", undefined), "SAM");
+  assert.equal(holderLine(undefined, undefined), "");
 });
 
 test("scale label: length, decimals, wingspan", () => {

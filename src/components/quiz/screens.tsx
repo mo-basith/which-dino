@@ -1,10 +1,9 @@
 import type { ComponentProps } from "react";
-import { DINOS, type DinoId } from "@/data/dinos";
 import type { Question } from "@/data/quiz";
 import { CardFan } from "./CardFan";
 import { BackIcon, Brand, CheckIcon, IconButton, PrimaryButton, TopBar, pad2 } from "./parts";
 
-// The three quiz screens. Presentational only: Quiz.tsx owns state and motion.
+// The quiz's intro and question screens (the result lives in components/result). Presentational only: Quiz.tsx owns state and motion.
 // `stage` props are the data-phase/data-dir attributes for the part that moves.
 
 type Stage = { "data-phase": string; "data-dir": string };
@@ -151,18 +150,5 @@ function AnswerRow({ index, text, state, onClick }: AnswerRowProps) {
         </span>
       </span>
     </button>
-  );
-}
-
-export function DoneScreen({ winner, onPlayAgain }: { winner: DinoId; onPlayAgain: () => void }) {
-  // Temporary placeholder: the real reveal comes in step 4.
-  return (
-    <>
-      <TopBar left={<Brand mark={winner} />} />
-      <h1 className="mt-24 text-title">You’re a {DINOS[winner].name}.</h1>
-      <div className="mt-auto pt-8 pb-8">
-        <PrimaryButton onClick={onPlayAgain}>Play again</PrimaryButton>
-      </div>
-    </>
   );
 }

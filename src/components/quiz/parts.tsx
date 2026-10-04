@@ -47,21 +47,27 @@ export function BackIcon() {
   );
 }
 
-export function CheckIcon() {
+export function CheckIcon({ size = 12 }: { size?: number }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" aria-hidden>
       <path d="m2.5 6.25 2.25 2.25L9.5 3.75" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+/** The primary button's look, for links that act as one. One primary per screen. */
+export const PRIMARY = "press holo-ring grid h-12 w-full place-items-center rounded-control bg-text text-body font-medium text-ground";
+
 export function PrimaryButton({ className = "", ...props }: ComponentProps<"button">) {
+  return <button type="button" className={`${PRIMARY} ${className}`} {...props} />;
+}
+
+/** A holo hairline chip ("NEW", "RARE · NEW"). */
+export function HoloChip({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <button
-      type="button"
-      className={`press holo-ring h-12 w-full rounded-control bg-text text-body font-medium text-ground ${className}`}
-      {...props}
-    />
+    <p className={`holo-hairline inline-flex h-8 items-center rounded-full px-3 font-mono text-label text-text uppercase ${className}`}>
+      {children}
+    </p>
   );
 }
 

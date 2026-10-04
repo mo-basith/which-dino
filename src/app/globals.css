@@ -28,7 +28,6 @@
   --color-card-label: #5a5962;
   --color-rare-face: #0b0b0d;
   --color-rare-label: rgb(255 255 255 / 0.62); /* rare card label, fact and footer text */
-  --color-art: #131316;
 
   /* Radius */
   --radius-control: 12px; /* buttons, inputs */
@@ -38,6 +37,7 @@
 
   /* Layout */
   --container-column: 440px; /* the phone column, centred on wider screens */
+  --container-wide: 1200px; /* two-column desktop screens (the result), from 1024px */
 
   /* Spacing: Tailwind's 4px base; stay on even steps (8px grid) */
   --spacing-gutter: 24px; /* phone side margin */
@@ -62,6 +62,23 @@
   --text-label: 0.75rem; /* Geist Mono, uppercase */
   --text-label--line-height: 1.3;
 }
+
+/* Reduced motion: the OS setting, or forced either way by a data-motion
+   ancestor ("reduced" | "full") so /dev/reveal can simulate it. JS reads the
+   same through useReducedMotion(). */
+@custom-variant reduced {
+  @media (prefers-reduced-motion: reduce) {
+    &:where(:not([data-motion="full"], [data-motion="full"] *)) {
+      @slot;
+    }
+  }
+  &:where([data-motion="reduced"], [data-motion="reduced"] *) {
+    @slot;
+  }
+}
+
+/* Short viewports (under 700px tall): the card drops to 240 and spacing tightens. */
+@custom-variant short (@media (height < 700px));
 
 /* Devices with a fine pointer that can hover (i.e. probably a keyboard too). */
 @custom-variant can-hover (@media (hover: hover) and (pointer: fine));
@@ -104,10 +121,11 @@ body {
   background-image: radial-gradient(closest-side, rgb(180 170 255 / var(--glow-alpha, 0.12)), transparent);
 }
 
-/* Card art window: #131316 with 1px dots every 8px at 7% white */
-@utility bg-art-window {
-  background-color: var(--color-art);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='1' height='1' fill='white' fill-opacity='0.07'/%3E%3C/svg%3E");
+/* Card art window: a soft tonal panel with 1px dots every 8px, coloured by
+   the card face's palette (--card-window, --card-window-dots). */
+@utility card-window {
+  background-color: var(--card-window);
+  background-image: conic-gradient(at 1px 1px, transparent 75%, var(--card-window-dots) 0);
   background-size: 8px 8px;
 }
 
@@ -152,6 +170,24 @@ body {
   }
   &:focus-visible::after {
     opacity: 1;
+  }
+}
+
+/* A 1px holo border that follows the element's radius (the "new" chip). */
+@utility holo-hairline {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--holo);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
   }
 }
 
@@ -239,8 +275,11 @@ html[data-quiz-resume] [data-quiz-root] {
     --card-dash: rgb(17 17 20 / 0.28);
     --card-silhouette: rgb(17 17 20 / 0.8);
     --card-block-empty: rgb(17 17 20 / 0.12);
-    --card-dino: #ececef;
-    --card-egg: rgb(255 255 255 / 0.4);
+    --card-window: rgb(17 17 20 / 0.055);
+    --card-window-dots: rgb(17 17 20 / 0.09);
+    --card-window-ink: 17 17 20; /* channels, for rgb(… / alpha) */
+    --card-dino: var(--color-ink);
+    --card-egg: rgb(17 17 20 / 0.4);
     --card-frame: var(--holo);
     --card-frame-width: 1px;
   }
@@ -252,6 +291,9 @@ html[data-quiz-resume] [data-quiz-root] {
     --card-dash: rgb(255 255 255 / 0.24);
     --card-silhouette: rgb(255 255 255 / 0.75);
     --card-block-empty: rgb(255 255 255 / 0.12);
+    --card-window: rgb(255 255 255 / 0.045);
+    --card-window-dots: rgb(255 255 255 / 0.09);
+    --card-window-ink: 255 255 255;
     --card-egg: rgb(255 255 255 / 0.6);
     --card-frame: var(--prism);
     --card-frame-width: 2px;
@@ -374,18 +416,143 @@ html[data-quiz-resume] [data-quiz-root] {
   }
 
   /* Reduced motion: no flip rotation; the sides crossfade instead. */
-  @media (prefers-reduced-motion: reduce) {
-    .card-flip,
-    [data-side="back"] > .card-flip,
-    .card-face-back {
+  .card-flip,
+  [data-side="back"] > .card-flip,
+  .card-face-back {
+    @variant reduced {
       transform: none;
     }
-    .card-face {
+  }
+  .card-face {
+    @variant reduced {
       transition: opacity var(--dur-reduced) var(--motion-ease);
     }
-    [data-side="front"] .card-face-back,
-    [data-side="back"] .card-face-front {
+  }
+  [data-side="front"] .card-face-back,
+  [data-side="back"] .card-face-front {
+    @variant reduced {
       opacity: 0;
     }
+  }
+
+  /* Card sizes that follow the viewport, in CSS so there's no jump after
+     hydration (see Card's `size`). --card-k scales the 280×350 design.
+     interactive: 280, or 240 when the viewport is under 700px tall.
+     result: the same, but 560 when the viewport is at least 1024×820. */
+  .card-size-interactive,
+  .card-size-result {
+    --card-k: 1;
+    @media (height < 700px) {
+      --card-k: calc(240 / 280);
+    }
+  }
+  .card-size-result {
+    @media (width >= 1024px) and (height >= 820px) {
+      --card-k: 2;
+    }
+  }
+
+  /* ── The reveal (src/components/result/ResultScreen.tsx) ──────────────────
+     Driven by attributes on .reveal: data-phase (wait | shuffle | land | flip |
+     settle | done), data-mode (turn | fade) and data-open (settle and after).
+     turn: the card grows on land, then turns sleeve → front in 3D.
+     fade: no travel; the sleeve fades out over the card (reduced motion, skip). */
+  .reveal-land {
+    perspective: 1000px;
+    transition: transform var(--dur-reveal-flip) var(--motion-ease);
+    &[data-landed] {
+      transform: scale(var(--land-scale));
+      transition-duration: var(--dur-land);
+    }
+  }
+  .reveal-turn {
+    transform-style: preserve-3d;
+    transition: transform var(--dur-reveal-flip) var(--motion-ease);
+    &[data-turned] {
+      transform: rotateY(180deg);
+    }
+  }
+  .reveal-sleeve,
+  .reveal-card {
+    backface-visibility: hidden;
+  }
+  .reveal-card {
+    transform: rotateY(180deg);
+  }
+  /* Open: the turn is complete, so drop both rotations at once (they cancel
+     out) and the card is just the card, in the same spot. */
+  .reveal[data-open] {
+    .reveal-turn,
+    .reveal-card {
+      transform: none;
+      transition: none;
+    }
+  }
+  .reveal[data-mode="fade"] {
+    .reveal-land,
+    .reveal-turn,
+    .reveal-card {
+      transform: none;
+      transition: none;
+      transform-style: flat;
+    }
+    .reveal-sleeve {
+      transition: opacity var(--dur-crossfade) var(--motion-ease);
+    }
+    &[data-open] .reveal-sleeve {
+      opacity: 0;
+    }
+  }
+
+  /* A white pulse over the card at the flip's halfway turn. */
+  .reveal-flash {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur-flash) var(--motion-ease);
+    &[data-on] {
+      opacity: var(--flash-to);
+    }
+  }
+
+  /* The glow brightens (0.08 → 0.16 alpha) and the caption fades as the card turns. */
+  .reveal-glow {
+    opacity: 0.5;
+    transition: opacity var(--dur-reveal-flip) var(--motion-ease);
+  }
+  .reveal-caption {
+    transition: opacity var(--dur-reveal-flip) var(--motion-ease);
+  }
+  .reveal:is([data-phase="flip"], [data-open]) {
+    .reveal-glow {
+      opacity: 1;
+    }
+    .reveal-caption {
+      opacity: 0;
+    }
+  }
+  .reveal[data-mode="fade"] :is(.reveal-glow, .reveal-caption) {
+    transition-duration: var(--dur-crossfade);
+  }
+
+  /* Settle: each item rises --rise px and fades in over --dur after --delay
+     (set per item from TIMING). Fade mode: all at once, no travel. */
+  .reveal-item {
+    transition-property: opacity, transform;
+    transition-timing-function: var(--motion-ease);
+    transition-duration: var(--dur);
+    transition-delay: var(--delay);
+  }
+  .reveal:not([data-open]) .reveal-item {
+    opacity: 0;
+    transform: translateY(var(--rise));
+    transition: none;
+  }
+  .reveal[data-mode="fade"] .reveal-item {
+    transform: none;
+    transition: opacity var(--dur-crossfade) var(--motion-ease);
   }
 }

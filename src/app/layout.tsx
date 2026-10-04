@@ -6,9 +6,19 @@ import { FOIL_CSS_VARS } from "@/lib/holo";
 import { MOTION_CSS_VARS } from "@/lib/motion";
 import "./globals.css";
 
+// Absolute URLs for link previews: the production domain on Vercel, else local.
+const SITE = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : `http://localhost:${process.env.PORT ?? 3000}`;
+
+const DESCRIPTION = "Six questions. One dino. A holographic card to prove it.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE),
   title: "Which Dino?",
-  description: "Six questions. One dino. A holographic card to prove it.",
+  description: DESCRIPTION,
+  openGraph: { title: "Which Dino?", description: DESCRIPTION, siteName: "Which Dino?", type: "website", url: "/" },
+  twitter: { card: "summary_large_image", title: "Which Dino?", description: DESCRIPTION },
 };
 
 export const viewport: Viewport = {

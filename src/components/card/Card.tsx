@@ -4,41 +4,56 @@ import { useEffect, useReducer, useRef, type CSSProperties, type PointerEvent, t
 import { DINOS, type DinoId } from "@/data/dinos";
 import { CARD, type CardRow } from "@/lib/card";
 import { TIMING } from "@/lib/motion";
+import { useReducedMotion } from "@/lib/useReducedMotion";
 import { CardBack, CardFront, type Side } from "./faces";
 
 // The trading card. Designed at 280×350 and scaled as a whole with a
 // transform, so every size is the same card.
 //
-// Size rule: pixel art only stays on whole pixels at 280 (scale 1). Interactive
-// cards render at 280; 240 is the fallback for short phones only. Thumbnails
-// (104) may be slightly soft. Share images should use whole multiples (560, 840).
+// Size rule: pixel art only stays on whole pixels at whole multiples of 280.
+// Interactive cards render at 280; 240 is the fallback for short viewports
+// only; the desktop result is 560 on a big enough screen. Thumbnails (104)
+// may be slightly soft. Share images use whole multiples (560, 840).
 
 type CardProps = {
   dinoId: DinoId;
   /** The three back rows (see backRows in src/lib/card.ts). */
   rows: readonly CardRow[];
   holder?: string;
-  hatchedAt: Date;
+  /** When it was hatched (the footer date). A friend's card from a link has none yet. */
+  hatchedAt?: Date;
   mode: "interactive" | "static";
   /** Which side a static card shows, or the side an interactive card starts on (front by default). */
   side?: Side;
-  /** Rendered width in px. Height follows at 280:350. */
-  width?: number;
+  /** Rendered width in px, or a size that follows the viewport (see CardScale). Height follows at 280:350. */
+  width?: CardWidth;
   className?: string;
 };
 
 export function Card({ mode, width = CARD.width, className, ...card }: CardProps) {
   return (
-    <Scaled width={width} className={className}>
+    <CardScale width={width} className={className}>
       {mode === "interactive" ? <InteractiveCard {...card} /> : <StaticCard {...card} />}
-    </Scaled>
+    </CardScale>
   );
 }
 
-function Scaled({ width, className = "", children }: { width: number; className?: string; children: ReactNode }) {
-  const k = width / CARD.width;
+/**
+ * A fixed width in px, or a size set in CSS by the viewport (.card-size-* in
+ * globals.css): "interactive" is 280 (240 under 700px tall), "result" is the
+ * same but 560 from 1024×820.
+ */
+export type CardWidth = number | "interactive" | "result";
+
+/** Lays out a 280×350 design-size box at `width`, scaled as a whole. */
+export function CardScale({ width, className = "", children }: { width: CardWidth; className?: string; children: ReactNode }) {
+  const fixed = typeof width === "number";
+  const k = fixed ? width / CARD.width : "var(--card-k)";
   return (
-    <div className={`relative shrink-0 ${className}`} style={{ width, height: (width * CARD.height) / CARD.width }}>
+    <div
+      className={`relative shrink-0 ${fixed ? "" : `card-size-${width}`} ${className}`}
+      style={{ width: `calc(${CARD.width}px * ${k})`, height: `calc(${CARD.height}px * ${k})` }}
+    >
       <div
         className="absolute top-0 left-0 origin-top-left"
         style={{ width: CARD.width, height: CARD.height, transform: k === 1 ? undefined : `scale(${k})` }}
@@ -85,17 +100,17 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const REDUCED = "(prefers-reduced-motion: reduce)";
 const FINE_HOVER = "(hover: hover) and (pointer: fine)";
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 // Pointer within this fraction of the top-left corner reveals the egg.
 const EGG_CORNER = 0.25;
 
-function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Faces) {
+export function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Faces) {
   const [state, dispatch] = useReducer(reducer, { side, phase: "idle" });
   const busy = useRef(false);
   const timer = useRef<number>(undefined);
   const tilt = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -103,7 +118,7 @@ function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Fa
     if (busy.current) return;
     busy.current = true;
     dispatch({ type: "flip" });
-    const duration = matchMedia(REDUCED).matches ? TIMING.reduced : TIMING.flip;
+    const duration = reduced ? TIMING.reduced : TIMING.flip;
     timer.current = window.setTimeout(() => {
       busy.current = false;
       dispatch({ type: "settle" });
@@ -114,7 +129,7 @@ function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Fa
   // CSS variables so moving the pointer never re-renders. Touch just flips.
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const el = tilt.current;
-    if (!el || e.pointerType !== "mouse" || !matchMedia(FINE_HOVER).matches || matchMedia(REDUCED).matches) return;
+    if (!el || e.pointerType !== "mouse" || !matchMedia(FINE_HOVER).matches || reduced) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const px = clamp01((e.clientX - rect.left) / rect.width);
     const py = clamp01((e.clientY - rect.top) / rect.height);
@@ -146,6 +161,7 @@ function InteractiveCard({ dinoId, rows, holder, hatchedAt, side = "front" }: Fa
           type="button"
           aria-label={`Flip the ${DINOS[dinoId].name} card`}
           onClick={flip}
+          data-card-flip
           className="card-hit absolute inset-0 cursor-pointer rounded-card"
         />
       </div>

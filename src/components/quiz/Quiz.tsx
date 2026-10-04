@@ -1,27 +1,37 @@
 "use client";
 
 import { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef, type KeyboardEvent } from "react";
+import { ResultScreen } from "@/components/result/ResultScreen";
+import { DINO_IDS, type DinoId } from "@/data/dinos";
 import { QUIZ } from "@/data/quiz";
+import { backRows } from "@/lib/card";
 import { TIMING } from "@/lib/motion";
 import { score } from "@/lib/scoring";
-import { DoneScreen, IntroScreen, QuestionScreen } from "./screens";
+import { IntroScreen, QuestionScreen } from "./screens";
 
-// The whole quiz flow on "/": intro → question 1–6 → done, with no route change.
+// The whole quiz flow on "/": intro → question 1–6 → result, with no route change.
 //
-// Steps: 0 = intro, 1–6 = question n, 7 = done. Every step has its own browser
+// Steps: 0 = intro, 1–6 = question n, 7 = result. Every step has its own browser
 // history entry ({ quiz: step }), pushed in order from the intro's entry, so an
 // entry's step is also its distance from the intro. The phone's back button
 // (and our Back / Backspace, which call history.back()) land on popstate.
 //
 // answers[i] is the answer picked for question i+1. Arriving at question n
 // keeps answers 1..n (n shows pre-selected if answered) and drops the rest.
+//
+// The result ({ dinoId, hatchedAt }) is made when the last answer is picked,
+// and the reveal plays then. A refresh or history lands on it settled.
+// "/?start" (from a shared card's "Which dino am I?") starts fresh at question 1.
 
 const TOTAL = QUIZ.length;
 const DONE = TOTAL + 1;
 const STORAGE_KEY = "which-dino:answers";
+const RESULT_KEY = "which-dino:result";
 const RESUME_ATTR = "data-quiz-resume";
+const START_PARAM = "start";
 
-type Screen = "intro" | "question" | "done";
+type Screen = "intro" | "question" | "result";
+type Result = { dinoId: DinoId; hatchedAt: number };
 type Phase = "idle" | "out" | "enter";
 type Dir = "forward" | "back";
 
@@ -35,16 +45,19 @@ type State = {
   whole: boolean;
   /** Restored from history/sessionStorage (the first render always matches the server). */
   ready: boolean;
+  result: Result | null;
+  /** Play the reveal on arriving at the result (just finished, not a refresh or history). */
+  reveal: boolean;
 };
 
 type Action =
-  | { type: "restore"; step: number; answers: number[] }
+  | { type: "restore"; step: number; answers: number[]; result: Result | null }
   | { type: "pick"; answer: number }
   | { type: "depart"; dir: Dir; whole: boolean }
-  | { type: "arrive"; step: number }
+  | { type: "arrive"; step: number; result: Result | null; reveal: boolean }
   | { type: "settle" };
 
-const screenOf = (step: number): Screen => (step === 0 ? "intro" : step === DONE ? "done" : "question");
+const screenOf = (step: number): Screen => (step === 0 ? "intro" : step === DONE ? "result" : "question");
 
 /** Answers that still hold at a step: up to and including that question. */
 const keepFor = (step: number, answers: number[]) => (step >= DONE ? answers : answers.slice(0, step));
@@ -52,18 +65,34 @@ const keepFor = (step: number, answers: number[]) => (step >= DONE ? answers : a
 /** The furthest step these answers allow. */
 const reachable = (answers: number[]) => (answers.length === TOTAL ? DONE : answers.length + 1);
 
-const INITIAL: State = { step: 0, answers: [], phase: "idle", dir: "forward", whole: false, ready: false };
+const INITIAL: State = {
+  step: 0,
+  answers: [],
+  phase: "idle",
+  dir: "forward",
+  whole: false,
+  ready: false,
+  result: null,
+  reveal: false,
+};
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "restore":
-      return { ...INITIAL, step: action.step, answers: action.answers, ready: true };
+      return { ...INITIAL, step: action.step, answers: action.answers, result: action.result, ready: true };
     case "pick":
       return { ...state, answers: [...state.answers.slice(0, state.step - 1), action.answer] };
     case "depart":
       return { ...state, phase: "out", dir: action.dir, whole: action.whole };
     case "arrive":
-      return { ...state, step: action.step, answers: keepFor(action.step, state.answers), phase: "enter" };
+      return {
+        ...state,
+        step: action.step,
+        answers: keepFor(action.step, state.answers),
+        result: action.result,
+        reveal: action.reveal,
+        phase: "enter",
+      };
     case "settle":
       return { ...state, phase: "idle" };
   }
@@ -96,13 +125,43 @@ function writeAnswers(answers: number[]) {
   }
 }
 
+function readResult(): Result | null {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(RESULT_KEY) ?? "null") as Partial<Result> | null;
+    const valid =
+      DINO_IDS.includes(parsed?.dinoId as DinoId) && Number.isFinite(parsed?.hatchedAt) && parsed?.hatchedAt !== undefined;
+    return valid ? (parsed as Result) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeResult(result: Result | null) {
+  try {
+    if (result) sessionStorage.setItem(RESULT_KEY, JSON.stringify(result));
+    else sessionStorage.removeItem(RESULT_KEY);
+  } catch {
+    // As above.
+  }
+}
+
+/**
+ * The result for a full set of answers: the stored one if it's for the same
+ * dino and not a fresh finish, otherwise hatched now.
+ */
+function resultFor(answers: number[], fresh: boolean): Result {
+  const dinoId = score(answers).winner;
+  const stored = readResult();
+  return !fresh && stored?.dinoId === dinoId ? stored : { dinoId, hatchedAt: Date.now() };
+}
+
 const pushStep = (step: number) => history.pushState({ ...history.state, quiz: step }, "");
 
 const prefersReducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Runs during HTML parsing on a refresh mid-quiz, so the server-rendered intro
-// never flashes before the client restores the right screen.
-const RESUME_SCRIPT = `try{var s=history.state;if(s&&s.quiz>0)document.documentElement.setAttribute("${RESUME_ATTR}","")}catch(e){}`;
+// Runs during HTML parsing on a refresh mid-quiz (or "/?start"), so the
+// server-rendered intro never flashes before the client restores the right screen.
+const RESUME_SCRIPT = `try{var s=history.state;if(s&&s.quiz>0||new URLSearchParams(location.search).has("${START_PARAM}"))document.documentElement.setAttribute("${RESUME_ATTR}","")}catch(e){}`;
 
 export function Quiz() {
   const [state, dispatch] = useReducer(reducer, INITIAL);
@@ -113,6 +172,8 @@ export function Quiz() {
   // Synchronous lock: set the moment a transition starts, so a second tap,
   // key or click during it does nothing.
   const busy = useRef(false);
+  // The latest answers, for timeouts that outlive the render that set them.
+  const answersRef = useRef(answers);
   const restored = useRef(false);
   const timeouts = useRef<number[]>([]);
 
@@ -136,7 +197,10 @@ export function Quiz() {
     const depart = () => {
       dispatch({ type: "depart", dir: direction, whole: screenOf(from) !== screenOf(to) });
       after(outMs, () => {
-        dispatch({ type: "arrive", step: to }); // parks it; the layout effect below moves it in
+        // Arriving at the result: a pick (hold) has just finished the quiz, so it's
+        // fresh and the reveal plays. Through history it's the stored result, settled.
+        const result = to === DONE ? resultFor(answersRef.current, hold) : null;
+        dispatch({ type: "arrive", step: to, result, reveal: to === DONE && hold }); // parks it; the layout effect below moves it in
         after(inMs, () => {
           busy.current = false;
           if (screenOf(to) !== "intro") focusRoot();
@@ -157,6 +221,7 @@ export function Quiz() {
   const pick = (answer: number) => {
     if (busy.current || screen !== "question") return;
     busy.current = true;
+    answersRef.current = [...answers.slice(0, step - 1), answer];
     dispatch({ type: "pick", answer });
     pushStep(step + 1);
     travel(step, step + 1, "forward", true);
@@ -168,10 +233,11 @@ export function Quiz() {
     history.back(); // → popstate
   };
 
-  const playAgain = () => {
+  const retake = () => {
     if (busy.current) return;
     busy.current = true;
     writeAnswers([]);
+    writeResult(null);
     history.go(-step); // back to the intro's entry → popstate
   };
 
@@ -218,6 +284,15 @@ export function Quiz() {
   useLayoutEffect(() => {
     if (restored.current) return; // once, even under Strict Mode's double effects
     restored.current = true;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has(START_PARAM)) {
+      // From a shared card: a fresh quiz at question 1, with the intro's entry behind it.
+      url.searchParams.delete(START_PARAM);
+      writeAnswers([]);
+      writeResult(null);
+      history.replaceState({ ...history.state, quiz: 0 }, "", url);
+      pushStep(1);
+    }
     let at = readStep(history.state);
     if (at === null) {
       history.replaceState({ ...history.state, quiz: 0 }, "");
@@ -229,15 +304,23 @@ export function Quiz() {
       history.go(limit - at);
       at = limit;
     }
-    dispatch({ type: "restore", step: at, answers: keepFor(at, saved) });
-    if (screenOf(at) === "question") focusRoot();
+    const result = at === DONE ? resultFor(saved, false) : null;
+    dispatch({ type: "restore", step: at, answers: keepFor(at, saved), result });
+    if (screenOf(at) !== "intro") focusRoot();
     document.documentElement.removeAttribute(RESUME_ATTR);
   }, []);
+
+  useLayoutEffect(() => {
+    answersRef.current = answers;
+  }, [answers]);
 
   // Persist from the restore on, so the first (server-matching) render can't wipe a saved quiz.
   useEffect(() => {
     if (ready) writeAnswers(answers);
   }, [ready, answers]);
+  useEffect(() => {
+    if (state.result) writeResult(state.result);
+  }, [state.result]);
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (screen !== "question" || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
@@ -266,7 +349,9 @@ export function Quiz() {
           tabIndex={-1}
           onKeyDown={onKeyDown}
           data-quiz-root
-          className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter outline-none"
+          className={`relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter outline-none ${
+            screen === "result" ? "lg:max-w-wide" : ""
+          }`}
         >
           <div className="q-stage flex flex-1 flex-col" {...(whole ? moving : still)}>
             {screen === "intro" && <IntroScreen onStart={start} />}
@@ -282,8 +367,15 @@ export function Quiz() {
                 onBack={back}
               />
             )}
-            {screen === "done" && answers.length === TOTAL && (
-              <DoneScreen winner={score(answers).winner} onPlayAgain={playAgain} />
+            {screen === "result" && state.result && (
+              <ResultScreen
+                key={state.result.hatchedAt}
+                dinoId={state.result.dinoId}
+                rows={backRows(state.result.dinoId, answers)}
+                hatchedAt={new Date(state.result.hatchedAt)}
+                reveal={state.reveal}
+                onRetake={retake}
+              />
             )}
           </div>
         </main>

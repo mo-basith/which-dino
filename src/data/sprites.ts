@@ -155,8 +155,21 @@ export const SPRITES = {
   ],
 } satisfies Record<DinoId, SpriteGrid>;
 
-/** Non-dino art drawn on cards. `human` stands next to each dino for scale. */
+/**
+ * Non-dino art. `human` stands next to each dino for scale. `question` is the
+ * face-down sleeve's mark during the reveal, the only place a "?" appears.
+ */
 export const PROPS = {
+  question: [
+    ".####.",
+    "##..##",
+    "....##",
+    "...##.",
+    "..##..",
+    "..##..",
+    "......",
+    "..##..",
+  ],
   human: [
     ".##.",
     ".##.",

@@ -4,6 +4,7 @@ import { DINOS, type Dino, type DinoId, type Rarity } from "@/data/dinos";
 import { SPRITES } from "@/data/sprites";
 import {
   BAR_BLOCKS,
+  BAR_HOLO_SPAN,
   artScale,
   blockHoloAt,
   contentWidth,
@@ -55,13 +56,19 @@ function Footer({ left, right }: { left?: string; right?: string }) {
   );
 }
 
+// What's drawn in the art window, in the face's window ink (--card-window-ink:
+// ink on commons, white on rares) at these opacities.
 const ON_WINDOW = {
-  era: "rgb(255 255 255 / 0.55)",
-  ground: "rgb(255 255 255 / 0.18)",
-  human: "rgb(255 255 255 / 0.38)",
-  bar: "rgb(255 255 255 / 0.25)",
-  label: "rgb(255 255 255 / 0.6)",
+  era: "rgb(var(--card-window-ink) / 0.55)",
+  ground: "rgb(var(--card-window-ink) / 0.18)",
+  human: "rgb(var(--card-window-ink) / 0.38)",
+  bar: "rgb(var(--card-window-ink) / 0.22)",
+  tick: "rgb(var(--card-window-ink) / 0.4)",
+  label: "rgb(var(--card-window-ink) / 0.6)",
 };
+
+// A rare dino spans the same stretch of the holo as the bars (pink → yellow → mint), so they read as one material.
+const RARE_DINO_HOLO = [0, BAR_HOLO_SPAN] as const;
 
 // The dino and the human stand on the ground line, 29px up from the bottom.
 const GROUND = 29;
@@ -74,7 +81,7 @@ function ArtWindow({ dino, egg }: { dino: Dino; egg: boolean }) {
   const left = Math.round((contentWidth(dino.rarity) - width) / 2);
 
   return (
-    <div className="relative h-[184px] shrink-0 overflow-hidden rounded-[10px] bg-art-window">
+    <div className="relative h-[184px] shrink-0 overflow-hidden rounded-[10px] card-window">
       <p className="absolute top-3 left-3 text-[7.5px] leading-none uppercase" style={{ color: ON_WINDOW.era }}>
         {dino.era}
       </p>
@@ -96,6 +103,7 @@ function ArtWindow({ dino, egg }: { dino: Dino; egg: boolean }) {
         id={dino.id}
         size={{ scale }}
         color={dino.rarity === "rare" ? "holo" : "var(--card-dino)"}
+        holoRange={RARE_DINO_HOLO}
         className="absolute"
         style={{ bottom: GROUND + 1, left }}
       />
@@ -112,12 +120,12 @@ function ArtWindow({ dino, egg }: { dino: Dino; egg: boolean }) {
   );
 }
 
-const ScaleTick = () => <div className="h-[5px] w-px" style={{ background: ON_WINDOW.label }} />;
+const ScaleTick = () => <div className="h-[5px] w-px" style={{ background: ON_WINDOW.tick }} />;
 
 type FrontProps = {
   dinoId: DinoId;
   holder?: string;
-  hatchedAt: Date;
+  hatchedAt?: Date;
   turned?: boolean;
   hidden?: boolean;
   /** Render the hidden "STILL HERE" chicken (interactive cards only). */
