@@ -7,18 +7,19 @@ The old boards in `reference/dino-v0/*.dc.html` are superseded. Ignore their sty
 ## screens/ (phone 390 wide unless noted)
 | File | What |
 |---|---|
-| 01-intro.png | First visit. A fan of three face-down cards with faint silhouettes, the heading, Start. |
+| home-desktop.png (1440), home-mobile.png (390) | **The home page, first visit. Supersedes 01-intro.png and d1-desktop-intro.png.** Full-page captures: hero (fan of face-down cards + heading + Start), How it works (3 steps), The herd (10 tiles, rares chipped RARE), Every card has a back (front + back, Flip card pill), closing CTA, footer. |
+| 01-intro.png | Superseded by home-mobile.png. |
 | 02-intro-returning.png | Returning visitor: your card, "Welcome back, T-rex.", Share my card / Retake. |
 | 03-shared-link.png | Landing from a friend's link. Their card, "Sam is a Velociraptor.", "Added to your herd" chip. |
 | 04-question.png | Question, resting. Segmented progress, key hints 1–4. |
 | 05-question-picked.png | Question, answer picked. The row brightens, the others dim to 50%, and the key hint becomes a check. |
-| 07-result-common.png | Result: card, "NEW · 2 / 10" holo chip, title, one-liner, Share / Save / Copy link, herd row. |
+| 07-result-common.png | Result: card, title, one-liner, Share / Save / Copy link, herd row. **The "NEW · 2 / 10" chip is removed:** commons show no chip; rares show a small holo "RARE" chip. |
 | 08-result-rare.png | The same for a rare (prism card). |
 | 09-result-already-owned.png | The same when the card is already in your herd (neutral chip). |
 | 10-share-sheet.png | Bottom sheet: preview, optional "Sign it" name field, Share… / Save image / Copy link. |
 | 11-binder.png | "Your herd" 3/10: three columns, found cards plus dashed silhouettes. This screen scrolls. |
 | 12-card-detail.png | One card large (tap to flip, hover to tilt), prev/next, "From Sam · 3 Oct". |
-| d1-desktop-intro.png, d2-desktop-result.png | Desktop, 1440 wide: two columns. |
+| d2-desktop-result.png | Desktop result, 1440 wide: two columns, both vertically centred in the viewport. (d1-desktop-intro.png is superseded by home-desktop.png.) |
 | share-image-1080x1350.png | The saved/shared image. |
 | link-preview-1200x630.png | The link preview. |
 

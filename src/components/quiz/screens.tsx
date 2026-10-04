@@ -1,37 +1,11 @@
-import type { ComponentProps } from "react";
 import type { Question } from "@/data/quiz";
-import { CardFan } from "./CardFan";
-import { BackIcon, Brand, CheckIcon, IconButton, PrimaryButton, TopBar, pad2 } from "./parts";
+import { AnswerRow } from "./AnswerRow";
+import { BackIcon, IconButton, TopBar, pad2 } from "./parts";
 
-// The quiz's intro and question screens (the result lives in components/result). Presentational only: Quiz.tsx owns state and motion.
+// The quiz's question screen (the intro is the home page, components/home; the result is components/result). Presentational only: Quiz.tsx owns state and motion.
 // `stage` props are the data-phase/data-dir attributes for the part that moves.
 
 type Stage = { "data-phase": string; "data-dir": string };
-
-export function IntroScreen({ onStart }: { onStart: () => void }) {
-  return (
-    <>
-      <div
-        className="bg-glow pointer-events-none absolute top-0 left-1/2 -z-10 h-[480px] w-[640px] -translate-x-1/2 -translate-y-1/3 [--glow-alpha:0.14]"
-        aria-hidden
-      />
-      <TopBar left={<Brand />} />
-      <CardFan className="mt-12" />
-      <h1 className="mt-24 text-display">
-        Which dino <br />
-        are you?
-      </h1>
-      <p className="mt-4 text-body text-text-2">Six questions, one holographic card. Collect the other nine from friends.</p>
-      <div className="mt-auto pt-8 pb-8">
-        <PrimaryButton onClick={onStart}>Start</PrimaryButton>
-        {/* The right side is reserved for "0 / 10 in your herd" (herd comes in its own step). */}
-        <div className="mt-4 flex justify-between font-mono text-label text-text-3">
-          <span>About a minute</span>
-        </div>
-      </div>
-    </>
-  );
-}
 
 type QuestionScreenProps = {
   question: Question;
@@ -110,45 +84,3 @@ function Progress({ total, filled }: { total: number; filled: number }) {
   );
 }
 
-type AnswerRowProps = { index: number; text: string; state: "rest" | "picked" | "dimmed" } & Pick<
-  ComponentProps<"button">,
-  "onClick"
->;
-
-function AnswerRow({ index, text, state, onClick }: AnswerRowProps) {
-  const picked = state === "picked";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={picked}
-      aria-keyshortcuts={String(index + 1)}
-      className={`press holo-ring group relative flex h-15 w-full desk:h-16 items-center justify-between gap-4 rounded-control border border-line bg-raised-1 px-4 text-left text-body ${
-        state === "dimmed" ? "opacity-50" : ""
-      }`}
-    >
-      {/* Picked look: raised-2 with the line-selected border, faded in over the resting row. */}
-      <span
-        aria-hidden
-        className={`fade absolute -inset-px rounded-control border border-line-selected bg-raised-2 ${picked ? "opacity-100" : "opacity-0"}`}
-      />
-      <span className="relative">{text}</span>
-      <span aria-hidden className="relative grid size-6 shrink-0 place-items-center">
-        <span
-          className={`fade col-start-1 row-start-1 grid size-6 place-items-center rounded-key border border-line-strong font-mono text-label text-text-3 ${
-            picked ? "opacity-0" : "opacity-100"
-          }`}
-        >
-          {index + 1}
-        </span>
-        <span
-          className={`fade col-start-1 row-start-1 grid size-6 place-items-center rounded-key bg-text text-ground ${
-            picked ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <CheckIcon />
-        </span>
-      </span>
-    </button>
-  );
-}

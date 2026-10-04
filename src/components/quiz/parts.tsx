@@ -62,10 +62,19 @@ export function PrimaryButton({ className = "", ...props }: ComponentProps<"butt
   return <button type="button" className={`${PRIMARY} ${className}`} {...props} />;
 }
 
-/** A holo hairline chip ("NEW", "RARE · NEW"). */
-export function HoloChip({ children, className = "" }: { children: ReactNode; className?: string }) {
+/** A holo hairline chip ("RARE"). */
+export function HoloChip({
+  children,
+  size = "regular",
+  className = "",
+}: {
+  children: ReactNode;
+  size?: "regular" | "small";
+  className?: string;
+}) {
+  const box = size === "small" ? "h-6 px-2" : "h-8 px-3";
   return (
-    <p className={`holo-hairline inline-flex h-8 items-center rounded-full px-3 font-mono text-label text-text uppercase ${className}`}>
+    <p className={`holo-hairline inline-flex ${box} items-center rounded-full font-mono text-label text-text uppercase ${className}`}>
       {children}
     </p>
   );

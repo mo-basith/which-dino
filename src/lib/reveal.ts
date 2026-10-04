@@ -1,14 +1,11 @@
-// The reveal's sequence ("R2 Shuffle"), as pure data: the shuffle path and
-// when each phase starts, for a tempo. ResultScreen.tsx plays it; no React here.
+// The reveal's sequence ("R2 Shuffle", staged then docked), as pure data: the
+// shuffle path and when each phase starts. ResultScreen.tsx plays it; no React here.
 // Relative imports (not "@/") so tests can run it compiled by tsc.
 
 import { DINO_IDS, type DinoId } from "../data/dinos";
-import { TIMING, timeAtProgress, type RevealTempo, type TempoId } from "./motion";
+import { EASE_FLIP_CURVE, TIMING, timeAtProgress } from "./motion";
 
 export type RevealPhase = "wait" | "shuffle" | "land" | "flip" | "hold" | "dock" | "settle" | "done";
-
-export const TEMPO_IDS = Object.keys(TIMING.reveal) as TempoId[];
-export const isTempoId = (value: unknown): value is TempoId => TEMPO_IDS.includes(value as TempoId);
 
 /**
  * The silhouettes the shuffle shows, one per shuffle step. Random, never the
@@ -17,7 +14,7 @@ export const isTempoId = (value: unknown): value is TempoId => TEMPO_IDS.include
 export function shufflePath(
   winner: DinoId,
   rng: () => number = Math.random,
-  steps: number = TIMING.reveal[TIMING.revealTempo].shuffleSteps.length,
+  steps: number = TIMING.shuffleSteps.length,
   ids: readonly DinoId[] = DINO_IDS,
 ): DinoId[] {
   const path: DinoId[] = [];
@@ -33,19 +30,22 @@ export function shufflePath(
 
 /**
  * The settle, after the title: these rise in order, restStagger apart. The
- * flip pill (under the card) comes first.
+ * flip pill (under the card) comes first. Commons have no chip.
  */
 export const SETTLE_ITEMS = ["flip", "chip", "oneLiner", "actions", "retake"] as const;
+export type SettleItem = (typeof SETTLE_ITEMS)[number];
 
-/** When the dino's name rises: with the lead on one line (unstaged), or titleStagger after it. */
-export const nameDelay = (tempo: RevealTempo) => (tempo.staged ? tempo.titleStagger : 0);
+/** The settle items a dino's result shows, in order. */
+export const settleItems = (rare: boolean): SettleItem[] => SETTLE_ITEMS.filter((item) => rare || item !== "chip");
 
-/** When each settle item starts rising, from the start of the settle. */
-export const settleDelay = (tempo: RevealTempo, index: number) =>
-  nameDelay(tempo) + tempo.titleStagger + index * tempo.restStagger;
+/** When the dino's name rises: titleStagger after "You're a". */
+export const NAME_DELAY = TIMING.titleStagger;
 
-const settleLength = (tempo: RevealTempo) =>
-  Math.max(nameDelay(tempo) + tempo.titleIn, settleDelay(tempo, SETTLE_ITEMS.length - 1) + tempo.restIn);
+/** When the settle item at `index` (in settleItems order) starts rising, from the start of the settle. */
+export const settleDelay = (index: number) => NAME_DELAY + TIMING.titleStagger + index * TIMING.restStagger;
+
+const settleLength = (rare: boolean) =>
+  Math.max(NAME_DELAY + TIMING.titleIn, settleDelay(settleItems(rare).length - 1) + TIMING.restIn);
 
 const sum = (values: readonly number[]) => values.reduce((a, b) => a + b, 0);
 
@@ -58,36 +58,34 @@ export type RevealSchedule = {
   flash: number;
   /** The flip has finished; staged, the card holds face up at stage size. */
   hold: number;
-  /** The card starts moving to its slot (the same as settle when unstaged). */
+  /** The card starts moving to its slot. */
   dock: number;
   settle: number;
   done: number;
 };
 
 /** Start times in ms from the moment the reveal begins. */
-export function revealSchedule(rare: boolean, tempo: RevealTempo): RevealSchedule {
-  const shuffle = tempo.shuffleSteps.map((_, i) => tempo.revealWait + sum(tempo.shuffleSteps.slice(0, i)));
-  const land = tempo.revealWait + sum(tempo.shuffleSteps);
-  const flip = land + tempo.land + (rare ? tempo.rareBeat : 0);
-  const edgeOn = flip + Math.round(timeAtProgress(0.5, tempo.flipEase) * tempo.revealFlip);
-  const hold = flip + tempo.revealFlip;
-  const dock = hold + (tempo.staged ? tempo.stageHold : 0);
-  const settle = dock + (tempo.staged ? tempo.dock : 0);
-  return { shuffle, land, flip, flash: edgeOn - tempo.flashPulse / 2, hold, dock, settle, done: settle + settleLength(tempo) };
+export function revealSchedule(rare: boolean): RevealSchedule {
+  const t = TIMING;
+  const shuffle = t.shuffleSteps.map((_, i) => t.revealWait + sum(t.shuffleSteps.slice(0, i)));
+  const land = t.revealWait + sum(t.shuffleSteps);
+  const flip = land + t.land + (rare ? t.rareBeat : 0);
+  const edgeOn = flip + Math.round(timeAtProgress(0.5, EASE_FLIP_CURVE) * t.revealFlip);
+  const hold = flip + t.revealFlip;
+  const dock = hold + t.stageHold;
+  const settle = dock + t.dock;
+  return { shuffle, land, flip, flash: edgeOn - t.flashPulse / 2, hold, dock, settle, done: settle + settleLength(rare) };
 }
 
 /** Reduced motion: no shuffle, no stage. The "?" waits, then everything crossfades in. */
-export const reducedSchedule = (tempo: RevealTempo) => ({
-  settle: tempo.revealWait,
-  done: tempo.revealWait + TIMING.reduced,
-});
+export const reducedSchedule = () => ({ settle: TIMING.revealWait, done: TIMING.revealWait + TIMING.reduced });
 
 /**
  * How long the card shows its front at stage size before the dock: from the
  * flip's edge-on moment (the front comes into view) to the dock starting.
  */
-export const frontOnStage = (tempo: RevealTempo) =>
-  tempo.staged ? Math.round((1 - timeAtProgress(0.5, tempo.flipEase)) * tempo.revealFlip) + tempo.stageHold : 0;
+export const frontOnStage = () =>
+  Math.round((1 - timeAtProgress(0.5, EASE_FLIP_CURVE)) * TIMING.revealFlip) + TIMING.stageHold;
 
 /** The stage: the card's width while staged, from the viewport (px). */
 export const STAGE = { sideMargin: 48, chrome: 200, heightRatio: 0.8, maxWidth: 560 } as const;

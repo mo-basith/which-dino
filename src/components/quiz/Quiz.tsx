@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useEffectEvent, useLayoutEffect, useReducer, useRef, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { ResultScreen } from "@/components/result/ResultScreen";
 import { DINO_IDS, type DinoId } from "@/data/dinos";
 import { QUIZ } from "@/data/quiz";
 import { backRows } from "@/lib/card";
-import { TIMING, type TempoId } from "@/lib/motion";
-import { isTempoId } from "@/lib/reveal";
+import { TIMING } from "@/lib/motion";
 import { score } from "@/lib/scoring";
-import { IntroScreen, QuestionScreen } from "./screens";
+import { QuizStartContext } from "./QuizStart";
+import { QuestionScreen } from "./screens";
 
 // The whole quiz flow on "/": intro → question 1–6 → result, with no route change.
 //
@@ -23,7 +32,6 @@ import { IntroScreen, QuestionScreen } from "./screens";
 // The result ({ dinoId, hatchedAt }) is made when the last answer is picked,
 // and the reveal plays then. A refresh or history lands on it settled.
 // "/?start" (from a shared card's "Which dino am I?") starts fresh at question 1.
-// "/?tempo=a|b|c" picks the reveal's tempo for the session (TIMING.reveal).
 
 const TOTAL = QUIZ.length;
 const DONE = TOTAL + 1;
@@ -31,8 +39,6 @@ const STORAGE_KEY = "which-dino:answers";
 const RESULT_KEY = "which-dino:result";
 const RESUME_ATTR = "data-quiz-resume";
 const START_PARAM = "start";
-const TEMPO_PARAM = "tempo";
-const TEMPO_KEY = "which-dino:tempo";
 
 type Screen = "intro" | "question" | "result";
 type Result = { dinoId: DinoId; hatchedAt: number };
@@ -52,11 +58,10 @@ type State = {
   result: Result | null;
   /** Play the reveal on arriving at the result (just finished, not a refresh or history). */
   reveal: boolean;
-  tempo: TempoId;
 };
 
 type Action =
-  | { type: "restore"; step: number; answers: number[]; result: Result | null; tempo: TempoId }
+  | { type: "restore"; step: number; answers: number[]; result: Result | null }
   | { type: "pick"; answer: number }
   | { type: "depart"; dir: Dir; whole: boolean }
   | { type: "arrive"; step: number; result: Result | null; reveal: boolean }
@@ -79,7 +84,6 @@ const INITIAL: State = {
   ready: false,
   result: null,
   reveal: false,
-  tempo: TIMING.revealTempo,
 };
 
 function reducer(state: State, action: Action): State {
@@ -90,7 +94,6 @@ function reducer(state: State, action: Action): State {
         step: action.step,
         answers: action.answers,
         result: action.result,
-        tempo: action.tempo,
         ready: true,
       };
     case "pick":
@@ -158,18 +161,6 @@ function writeResult(result: Result | null) {
   }
 }
 
-/** The reveal tempo: "?tempo=" saves one for the session; otherwise the saved one, or the default. */
-function readTempo(url: URL): TempoId {
-  try {
-    const param = url.searchParams.get(TEMPO_PARAM);
-    if (isTempoId(param)) sessionStorage.setItem(TEMPO_KEY, param);
-    const saved = sessionStorage.getItem(TEMPO_KEY);
-    return isTempoId(saved) ? saved : TIMING.revealTempo;
-  } catch {
-    return TIMING.revealTempo;
-  }
-}
-
 /**
  * The result for a full set of answers: the stored one if it's for the same
  * dino and not a fresh finish, otherwise hatched now.
@@ -188,7 +179,8 @@ const prefersReducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)"
 // server-rendered intro never flashes before the client restores the right screen.
 const RESUME_SCRIPT = `try{var s=history.state;if(s&&s.quiz>0||new URLSearchParams(location.search).has("${START_PARAM}"))document.documentElement.setAttribute("${RESUME_ATTR}","")}catch(e){}`;
 
-export function Quiz() {
+/** `home` is the intro: the server-rendered home page, shown at step 0. */
+export function Quiz({ home }: { home: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const { step, answers, phase, dir, whole, ready } = state;
   const screen = screenOf(step);
@@ -222,6 +214,8 @@ export function Quiz() {
     const depart = () => {
       dispatch({ type: "depart", dir: direction, whole: screenOf(from) !== screenOf(to) });
       after(outMs, () => {
+        // Leaving the home page: the page is replaced, so jump (never scroll) to the top.
+        if (screenOf(from) === "intro") window.scrollTo({ top: 0, behavior: "instant" });
         // Arriving at the result: a pick (hold) has just finished the quiz, so it's
         // fresh and the reveal plays. Through history it's the stored result, settled.
         const result = to === DONE ? resultFor(answersRef.current, hold) : null;
@@ -310,11 +304,6 @@ export function Quiz() {
     if (restored.current) return; // once, even under Strict Mode's double effects
     restored.current = true;
     const url = new URL(window.location.href);
-    const tempo = readTempo(url);
-    if (url.searchParams.has(TEMPO_PARAM)) {
-      url.searchParams.delete(TEMPO_PARAM);
-      history.replaceState(history.state, "", url);
-    }
     if (url.searchParams.has(START_PARAM)) {
       // From a shared card: a fresh quiz at question 1, with the intro's entry behind it.
       url.searchParams.delete(START_PARAM);
@@ -335,7 +324,7 @@ export function Quiz() {
       at = limit;
     }
     const result = at === DONE ? resultFor(saved, false) : null;
-    dispatch({ type: "restore", step: at, answers: keepFor(at, saved), result, tempo });
+    dispatch({ type: "restore", step: at, answers: keepFor(at, saved), result });
     if (screenOf(at) !== "intro") focusRoot();
     document.documentElement.removeAttribute(RESUME_ATTR);
   }, []);
@@ -363,25 +352,37 @@ export function Quiz() {
     }
   };
 
+  // A stable start for the home page's buttons and Enter, always calling the latest start().
+  const startRef = useRef(start);
+  useLayoutEffect(() => {
+    startRef.current = start;
+  });
+  const startFromHome = useCallback(() => startRef.current(), []);
+
+  // The home page lays out its own full-width sections; the quiz screens are a column.
+  const column =
+    screen === "intro"
+      ? ""
+      : `max-w-column px-gutter ${screen === "result" ? "desk:max-w-wide" : screen === "question" ? "desk:max-w-question" : ""}`;
+
   const moving = { "data-phase": phase, "data-dir": dir };
   const still = { "data-phase": "idle", "data-dir": dir };
 
   return (
-    <>
+    <QuizStartContext value={startFromHome}>
       <script
         type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: RESUME_SCRIPT }}
       />
-      <div className="overflow-x-clip">
+      {/* Clips glows that reach past the page (both ways, so they never add scroll). */}
+      <div className="overflow-clip">
         <main
           ref={rootRef}
           tabIndex={-1}
           onKeyDown={onKeyDown}
           data-quiz-root
-          className={`relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter outline-none ${
-            screen === "result" ? "desk:max-w-wide" : screen === "question" ? "desk:max-w-question" : ""
-          }`}
+          className={`relative isolate mx-auto flex min-h-dvh w-full flex-col outline-none ${column}`}
         >
           {/* The result arrives by fade only: its staged reveal is laid out against the viewport. */}
           <div
@@ -389,7 +390,7 @@ export function Quiz() {
             data-fade={screen === "result" || undefined}
             {...(whole ? moving : still)}
           >
-            {screen === "intro" && <IntroScreen onStart={start} />}
+            {screen === "intro" && home}
             {screen === "question" && (
               <QuestionScreen
                 question={QUIZ[step - 1]}
@@ -409,13 +410,12 @@ export function Quiz() {
                 rows={backRows(state.result.dinoId, answers)}
                 hatchedAt={new Date(state.result.hatchedAt)}
                 reveal={state.reveal}
-                tempo={state.tempo}
                 onRetake={retake}
               />
             )}
           </div>
         </main>
       </div>
-    </>
+    </QuizStartContext>
   );
 }

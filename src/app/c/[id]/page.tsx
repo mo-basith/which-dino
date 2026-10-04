@@ -34,11 +34,12 @@ export default async function SharedCardPage({ params }: PageProps<"/c/[id]">) {
   if (!dino) redirect("/");
 
   return (
-    <div className="overflow-x-clip">
+    <div className="overflow-clip">
       <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter desk:max-w-wide">
         <TopBar left={<Brand mark="velociraptor" />} />
-        {/* Phone: one column, the button at the bottom. From 900px: card left, text right. */}
-        <div className="flex flex-1 flex-col desk:flex-row desk:items-center desk:justify-center desk:gap-24">
+        {/* Phone: one column, the button at the bottom. From 900px: card left, text right,
+            centred in the height below the bar (top-aligned and scrolling if taller). */}
+        <div className="flex flex-1 flex-col desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
           <div className="relative mt-8 self-center short:mt-4 desk:mt-0">
             <div
               aria-hidden

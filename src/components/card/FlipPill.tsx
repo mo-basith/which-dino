@@ -10,7 +10,21 @@ import type { Side } from "./faces";
 // text follows the side ("Flip card" ↔ "Show front"); the accessible name stays
 // "Flip card" and aria-pressed carries which side is showing.
 
-export function FlipPill({ side, onFlip, className = "" }: { side: Side; onFlip: () => void; className?: string }) {
+type PillLabels = { front: string; back: string };
+/** The visible text while each side is showing. */
+const LABELS: PillLabels = { front: "Flip card", back: "Show front" };
+
+export function FlipPill({
+  side,
+  onFlip,
+  labels = LABELS,
+  className = "",
+}: {
+  side: Side;
+  onFlip: () => void;
+  labels?: PillLabels;
+  className?: string;
+}) {
   const back = side === "back";
   return (
     <button
@@ -24,8 +38,8 @@ export function FlipPill({ side, onFlip, className = "" }: { side: Side; onFlip:
       <span aria-hidden className="col-start-1 row-start-1 flex items-center justify-center gap-2">
         <RotateIcon />
         <span className="grid">
-          <span className={`fade col-start-1 row-start-1 ${back ? "opacity-0" : "opacity-100"}`}>Flip card</span>
-          <span className={`fade col-start-1 row-start-1 ${back ? "opacity-100" : "opacity-0"}`}>Show front</span>
+          <span className={`fade col-start-1 row-start-1 ${back ? "opacity-0" : "opacity-100"}`}>{labels.front}</span>
+          <span className={`fade col-start-1 row-start-1 ${back ? "opacity-100" : "opacity-0"}`}>{labels.back}</span>
         </span>
       </span>
     </button>
@@ -47,9 +61,9 @@ function RotateIcon() {
 }
 
 /** Flip the card from outside, and know which side it shows. */
-export function useCardFlip() {
+export function useCardFlip(initial: Side = "front") {
   const controls = useRef<CardControls>(null);
-  const [side, setSide] = useState<Side>("front");
+  const [side, setSide] = useState<Side>(initial);
   return { controls, side, onSideChange: setSide, flip: () => controls.current?.flip() };
 }
 
@@ -59,17 +73,20 @@ type FlippableCardProps = {
   holder?: string;
   hatchedAt?: Date;
   width: CardWidth;
+  /** The side it starts on. */
+  side?: Side;
+  labels?: PillLabels;
 };
 
-/** An interactive card with the flip pill under it (the shared-link page). */
-export function FlippableCard({ width, ...card }: FlippableCardProps) {
-  const { controls, side, onSideChange, flip } = useCardFlip();
+/** An interactive card with the flip pill under it (the shared-link page, the home page on phones). */
+export function FlippableCard({ width, side: initial = "front", labels, ...card }: FlippableCardProps) {
+  const { controls, side, onSideChange, flip } = useCardFlip(initial);
   return (
     <div className="flex flex-col items-center">
       <CardScale width={width}>
-        <InteractiveCard {...card} ref={controls} onSideChange={onSideChange} />
+        <InteractiveCard {...card} side={initial} ref={controls} onSideChange={onSideChange} />
       </CardScale>
-      <FlipPill side={side} onFlip={flip} className="mt-4" />
+      <FlipPill side={side} onFlip={flip} labels={labels} className="mt-4" />
     </div>
   );
 }

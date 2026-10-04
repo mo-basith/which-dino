@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ResultScreen } from "@/components/result/ResultScreen";
 import { DINO_LIST, DINOS, type DinoId } from "@/data/dinos";
 import { backRows } from "@/lib/card";
-import { TIMING, type TempoId } from "@/lib/motion";
-import { TEMPO_IDS, frontOnStage, reducedSchedule, revealSchedule } from "@/lib/reveal";
+import { frontOnStage, reducedSchedule, revealSchedule } from "@/lib/reveal";
 import { MotionOverride } from "@/lib/useReducedMotion";
 
 // A fixed date so server and client format the same string.
@@ -15,11 +14,8 @@ const LOOP_GAP = 1200;
 
 type Motion = "system" | "reduced" | "full";
 
-type BenchProps = { initialDino: DinoId; initialTempo: TempoId; bare: boolean };
-
-export function RevealBench({ initialDino, initialTempo, bare }: BenchProps) {
+export function RevealBench({ initialDino, bare }: { initialDino: DinoId; bare: boolean }) {
   const [dinoId, setDinoId] = useState<DinoId>(initialDino);
-  const [tempoId, setTempoId] = useState<TempoId>(initialTempo);
   const [motion, setMotion] = useState<Motion>("system");
   const [loop, setLoop] = useState(!bare);
   const [run, setRun] = useState(0);
@@ -36,21 +32,19 @@ export function RevealBench({ initialDino, initialTempo, bare }: BenchProps) {
   };
 
   const override = motion === "system" ? null : motion === "reduced";
-  const tempo = TIMING.reveal[tempoId];
-  const s = revealSchedule(DINOS[dinoId].rarity === "rare", tempo);
-  const r = reducedSchedule(tempo);
+  const s = revealSchedule(DINOS[dinoId].rarity === "rare");
+  const r = reducedSchedule();
 
   return (
     <MotionOverride value={override}>
-      <div data-motion={motion === "system" ? undefined : motion} className="overflow-x-clip">
+      <div data-motion={motion === "system" ? undefined : motion} className="overflow-clip">
         <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter desk:max-w-wide">
           <ResultScreen
-            key={`${dinoId}-${motion}-${tempoId}-${run}`}
+            key={`${dinoId}-${motion}-${run}`}
             dinoId={dinoId}
             rows={backRows(dinoId)}
             hatchedAt={HATCHED}
             reveal
-            tempo={tempoId}
             onRetake={replay}
             onSettled={onSettled}
           />
@@ -73,20 +67,6 @@ export function RevealBench({ initialDino, initialTempo, bare }: BenchProps) {
                 </option>
               ))}
             </select>
-            <div className="grid grid-cols-3 gap-1" role="group" aria-label="Tempo">
-              {TEMPO_IDS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  aria-pressed={tempoId === t}
-                  onClick={() => setTempoId(t)}
-                  className={`h-8 rounded-key border text-label uppercase ${tempoId === t ? "border-line-selected bg-raised-2" : "border-line"}`}
-                >
-                  {t}
-                  {t === TIMING.revealTempo ? " ·" : ""}
-                </button>
-              ))}
-            </div>
             <div className="grid grid-cols-3 gap-1" role="group" aria-label="Reduced motion">
               {(["system", "reduced", "full"] as const).map((m) => (
                 <button
@@ -116,7 +96,7 @@ export function RevealBench({ initialDino, initialTempo, bare }: BenchProps) {
               <br />
               settle {s.settle} · done {s.done}
               <br />
-              front on stage {frontOnStage(tempo)}
+              front on stage {frontOnStage()}
               <br />
               reduced: done {r.done}
             </p>

@@ -6,16 +6,17 @@ import { FlipPill, useCardFlip } from "@/components/card/FlipPill";
 import { Brand, HoloChip, TopBar } from "@/components/quiz/parts";
 import { DINOS, type DinoId } from "@/data/dinos";
 import { CARD, type CardRow } from "@/lib/card";
-import { TIMING, ms, tempoCssVars, type RevealTempo, type TempoId } from "@/lib/motion";
+import { TIMING, ms } from "@/lib/motion";
 import {
-  SETTLE_ITEMS,
-  nameDelay,
+  NAME_DELAY,
   reducedSchedule,
   revealSchedule,
   settleDelay,
+  settleItems,
   shufflePath,
   stageWidth,
   type RevealPhase,
+  type SettleItem,
 } from "@/lib/reveal";
 import { withArticle } from "@/lib/share";
 import { useReducedMotion } from "@/lib/useReducedMotion";
@@ -26,18 +27,17 @@ import { Sleeve } from "./Sleeve";
 // state machine; `revealing` is a synchronous lock so a skip can't double-fire.
 //
 // wait     the face-down sleeve shows its "?"
-// shuffle  silhouettes swap at the tempo's shuffleSteps, ending on the winner
+// shuffle  silhouettes swap at TIMING.shuffleSteps, ending on the winner
 // land     the card grows to landScale; rares turn the frame prism and hold rareBeat longer
 // flip     sleeve → card front, a white flash at the edge-on moment; the glow brightens
-// hold     (staged) the face-up card holds at stage size
-// dock     (staged) the card moves and scales into its slot; the scrim lifts
-// settle   the title rises in, then the flip pill, chip, one-liner, actions, retake
+// hold     the face-up card holds at stage size
+// dock     the card moves and scales into its slot; the scrim lifts
+// settle   "You're a", the name, then the flip pill, chip (rares), one-liner, actions, retake
 // done     the card is the normal interactive card, in its slot
 //
-// Staged tempos (B, C) play wait → hold big in the middle of the viewport:
-// the card renders at its slot size (exactly 280 or 560) and a measured
-// translate + scale puts it on the stage, so docking is just dropping that
-// transform. Unstaged (A) plays everything in the slot.
+// wait → hold play big in the middle of the viewport (the stage): the card
+// renders at its slot size (exactly 280 or 560) and a measured translate +
+// scale puts it on the stage, so docking is just dropping that transform.
 //
 // Mode "turn" is the full sequence. Mode "fade" crossfades the sleeve to the
 // card and fades everything else in, with no travel: reduced motion (no
@@ -110,8 +110,6 @@ type ResultScreenProps = {
   hatchedAt: Date;
   /** Play the reveal. Without it (a refresh, history), the result shows settled. */
   reveal: boolean;
-  /** Which reveal tempo (TIMING.reveal). */
-  tempo?: TempoId;
   onRetake: () => void;
   /** Called once the result has fully settled. */
   onSettled?: () => void;
@@ -122,18 +120,17 @@ export function ResultScreen({
   rows,
   hatchedAt,
   reveal,
-  tempo: tempoId = TIMING.revealTempo,
   onRetake,
   onSettled,
 }: ResultScreenProps) {
   const dino = DINOS[dinoId];
   const rare = dino.rarity === "rare";
   const reduced = useReducedMotion();
-  const tempo: RevealTempo = TIMING.reveal[tempoId];
-  // Fixed at mount, like the timeline: whether this reveal plays on the stage.
-  const [staged] = useState(() => reveal && tempo.staged && !reduced);
+  // Fixed at mount, like the timeline: whether this reveal plays on the stage (not under reduced motion).
+  const [staged] = useState(() => reveal && !reduced);
+  const items = settleItems(rare);
 
-  const [path] = useState(() => shufflePath(dinoId, Math.random, tempo.shuffleSteps.length));
+  const [path] = useState(() => shufflePath(dinoId));
   const [state, dispatch] = useReducer(reducer, {
     phase: reveal ? "wait" : "done",
     step: -1,
@@ -194,20 +191,18 @@ export function ResultScreen({
     if (!revealing.current) return;
     if (staged) window.scrollTo(0, 0);
     if (reduced) {
-      const s = reducedSchedule(tempo);
+      const s = reducedSchedule();
       at(s.settle, () => settle("fade", TIMING.reduced));
       finish(s.done);
     } else {
-      const s = revealSchedule(rare, tempo);
+      const s = revealSchedule(rare);
       s.shuffle.forEach((time, i) => at(time, () => dispatch({ type: "shuffle", step: i })));
       at(s.land, () => dispatch({ type: "phase", phase: "land" }));
       at(s.flip, () => dispatch({ type: "phase", phase: "flip" }));
       at(s.flash, () => dispatch({ type: "flash", on: true }));
-      at(s.flash + tempo.flashPulse / 2, () => dispatch({ type: "flash", on: false }));
-      if (staged) {
-        at(s.hold, () => dispatch({ type: "phase", phase: "hold" }));
-        at(s.dock, () => dispatch({ type: "phase", phase: "dock" }));
-      }
+      at(s.flash + TIMING.flashPulse / 2, () => dispatch({ type: "flash", on: false }));
+      at(s.hold, () => dispatch({ type: "phase", phase: "hold" }));
+      at(s.dock, () => dispatch({ type: "phase", phase: "dock" }));
       at(s.settle, () => settle());
       finish(s.done);
     }
@@ -225,7 +220,7 @@ export function ResultScreen({
 
   // The card is face up (turned, rotations dropped) from the end of the flip;
   // the text and the card's own controls come in at the settle.
-  const open = mode === "fade" ? atLeast(phase, "settle") : atLeast(phase, staged ? "hold" : "settle");
+  const open = atLeast(phase, mode === "fade" ? "settle" : "hold");
   const shown = atLeast(phase, "settle");
   // Turn mode: the sleeve faces away once the card is open, so it can go.
   // Fade mode: it stays to fade out over the card.
@@ -242,7 +237,7 @@ export function ResultScreen({
   // "You’re a" / "T-rex." (the article from withArticle, so "an" where needed).
   const lead = `You’re ${withArticle(dino.name).split(" ")[0]}`;
   const name = `${dino.name}.`;
-  const vars = { ...tempoCssVars(tempo), "--dur-crossfade": ms(crossfade) } as CSSProperties;
+  const vars = { "--dur-crossfade": ms(crossfade) } as CSSProperties;
   const moverStyle: CSSProperties | undefined =
     onStage && stage ? { transform: `translate(${stage.x}px, ${stage.y}px) scale(${stage.scale})` } : undefined;
 
@@ -286,7 +281,9 @@ export function ResultScreen({
         </>
       )}
 
-      <div className="flex flex-1 flex-col items-center desk:flex-row desk:justify-center desk:gap-24">
+      {/* Two columns from 900px, centred in the height below the bar; "safe", so if the
+          content is taller it aligns to the top and scrolls rather than clipping. */}
+      <div className="flex flex-1 flex-col items-center desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
         <div className="mt-8 flex flex-col items-center short:mt-4 desk:mt-0">
           <div ref={slotRef} className="relative">
             <div
@@ -328,7 +325,7 @@ export function ResultScreen({
               </CardScale>
             </div>
           </div>
-          <Item tempo={tempo} index={0} className="mt-4" inert={!shown}>
+          <Item items={items} item="flip" className="mt-4" inert={!shown}>
             <FlipPill side={side} onFlip={flip} />
           </Item>
         </div>
@@ -338,6 +335,7 @@ export function ResultScreen({
           inert={!shown}
           aria-hidden={!shown || undefined}
         >
+          {/* Reduced motion has no stage: the caption waits here, where the text will come in. */}
           {!staged && (
             <p
               aria-hidden
@@ -346,25 +344,28 @@ export function ResultScreen({
               Shuffling the herd…
             </p>
           )}
-          <Item tempo={tempo} index={1}>
-            <HoloChip>{rare ? "Rare · New" : "New"}</HoloChip>
-          </Item>
-          <h1 className="mt-4 text-title text-balance desk:text-display">
-            {/* Unstaged: one line rising together. Staged: "You're a", then the name, rising further. */}
-            <Item tempo={tempo} part="lead" as="span">
+          {/* Rares only: commons have no chip, and no gap where it would be. */}
+          {rare && (
+            <Item items={items} item="chip" className="mb-4">
+              <HoloChip size="small">Rare</HoloChip>
+            </Item>
+          )}
+          <h1 className="text-title text-balance desk:text-display">
+            {/* "You're a", then the name, rising further. */}
+            <Item items={items} part="lead" as="span">
               {lead}
             </Item>{" "}
-            <Item tempo={tempo} part="name" as="span">
+            <Item items={items} part="name" as="span">
               {name}
             </Item>
           </h1>
-          <Item tempo={tempo} index={2}>
+          <Item items={items} item="oneLiner">
             <p className="mt-2 max-w-measure text-body text-pretty text-text-2 desk:max-w-column">{dino.oneLiner}</p>
           </Item>
-          <Item tempo={tempo} index={3} className="mt-6 w-full">
+          <Item items={items} item="actions" className="mt-6 w-full">
             <ShareActions dinoId={dinoId} />
           </Item>
-          <Item tempo={tempo} index={4} className="mt-auto pt-8 pb-6 short:pt-4 short:pb-4 desk:mt-6 desk:pt-0 desk:pb-0">
+          <Item items={items} item="retake" className="mt-auto pt-8 pb-6 short:pt-4 short:pb-4 desk:mt-6 desk:pt-0 desk:pb-0">
             <button
               type="button"
               onClick={onRetake}
@@ -380,9 +381,10 @@ export function ResultScreen({
 }
 
 type ItemProps = {
-  tempo: RevealTempo;
-  /** A settle item (SETTLE_ITEMS order), or a part of the title. */
-  index?: number;
+  /** The settle items this result shows (settleItems), for the stagger. */
+  items: SettleItem[];
+  /** A settle item, or a part of the title. */
+  item?: SettleItem;
   part?: "lead" | "name";
   as?: "div" | "span";
   className?: string;
@@ -391,19 +393,19 @@ type ItemProps = {
 };
 
 /** One piece of the settle: rises in after its stagger (see reveal.ts). */
-function Item({ tempo, index = 0, part, as: Tag = "div", className = "", inert, children }: ItemProps) {
+function Item({ items, item, part, as: Tag = "div", className = "", inert, children }: ItemProps) {
   const timing =
     part === "lead"
-      ? { rise: tempo.staged ? tempo.leadRise : tempo.titleRise, dur: tempo.titleIn, delay: 0 }
+      ? { rise: TIMING.leadRise, dur: TIMING.titleIn, delay: 0 }
       : part === "name"
-        ? { rise: tempo.titleRise, dur: tempo.titleIn, delay: nameDelay(tempo) }
-        : { rise: tempo.restRise, dur: tempo.restIn, delay: settleDelay(tempo, index) };
+        ? { rise: TIMING.titleRise, dur: TIMING.titleIn, delay: NAME_DELAY }
+        : { rise: TIMING.restRise, dur: TIMING.restIn, delay: settleDelay(items.indexOf(item!)) };
   const style = { "--rise": `${timing.rise}px`, "--dur": ms(timing.dur), "--delay": ms(timing.delay) } as CSSProperties;
   return (
     <Tag
       className={`reveal-item ${Tag === "span" ? "inline-block" : ""} ${className}`}
       style={style}
-      data-item={part ?? SETTLE_ITEMS[index]}
+      data-item={part ?? item}
       inert={inert}
     >
       {children}
