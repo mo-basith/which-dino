@@ -285,7 +285,7 @@ export function ResultScreen({
 
       {/* Two columns from 900px, centred in the height below the bar; "safe", so if the
           content is taller it aligns to the top and scrolls rather than clipping. */}
-      <div className="site-container flex flex-1 flex-col items-center desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
+      <div className="site-container flex flex-1 flex-col items-center desk:flex-row desk:items-center-safe desk:justify-start desk:gap-24 desk:py-8">
         <div className="mt-8 flex flex-col items-center short:mt-4 desk:mt-0">
           <div ref={slotRef} className="relative">
             <div

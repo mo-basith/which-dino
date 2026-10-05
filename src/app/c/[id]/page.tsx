@@ -41,7 +41,7 @@ export default async function SharedCardPage({ params }: PageProps<"/c/[id]">) {
         <SiteHeader logo={<Logo dino="velociraptor" />} />
         {/* Phone: one column, the button at the bottom. From 900px: card left, text right,
             centred in the height below the bar (top-aligned and scrolling if taller). */}
-        <div className="site-container flex flex-1 flex-col desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
+        <div className="site-container flex flex-1 flex-col desk:flex-row desk:items-center-safe desk:justify-start desk:gap-24 desk:py-8">
           <div className="relative mt-8 self-center short:mt-4 desk:mt-0">
             <div
               aria-hidden
