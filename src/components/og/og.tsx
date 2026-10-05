@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { CSSProperties, ReactNode } from "react";
 import { DINOS, type DinoId, type Rarity } from "@/data/dinos";
 import { spriteGrid, type SpriteGrid, type SpriteId } from "@/data/sprites";
-import { ART, BAR_HOLO_SPAN, CARD, FRAME, artScale, contentWidth, scaleLabel, sleeveScale } from "@/lib/card";
+import { ART, BAR_HOLO_SPAN, CARD, FRAME, artLeft, artScale, contentWidth, scaleLabel, sleeveScale } from "@/lib/card";
 import { FOIL_CSS_VARS, HOLO_STOPS, colorAt, positionAlong } from "@/lib/holo";
 
 // Link preview images (1200×630) drawn with next/og. Satori has no blend
@@ -109,7 +109,7 @@ function Dots({ width, height, color }: { width: number; height: number; color: 
 
 // ── The card front ─────────────────────────────────────────────────────────
 
-const GROUND = 29; // as in faces.tsx
+const GROUND = ART.ground; // as in faces.tsx
 
 export function OgCard({ dinoId }: { dinoId: DinoId }) {
   const dino = DINOS[dinoId];
@@ -118,7 +118,6 @@ export function OgCard({ dinoId }: { dinoId: DinoId }) {
   const inner = contentWidth(dino.rarity);
   const scale = artScale(dinoId);
   const grid = sprite(dinoId);
-  const dinoWidth = Math.max(...grid.map((r) => r.length)) * scale;
   const onWindow = (alpha: number) => `rgba(${face.windowInk},${alpha})`;
   const dinoFill: Fill =
     dino.rarity === "rare"
@@ -191,7 +190,7 @@ export function OgCard({ dinoId }: { dinoId: DinoId }) {
             grid={grid}
             scale={scale}
             fill={dinoFill}
-            style={{ position: "absolute", left: Math.round((inner - dinoWidth) / 2), bottom: GROUND + 1 }}
+            style={{ position: "absolute", left: artLeft(dinoId), bottom: GROUND + 1 }}
           />
           <div style={{ position: "absolute", left: 14, right: 14, bottom: 9, display: "flex", alignItems: "center" }}>
             <div style={{ width: 1, height: 5, backgroundColor: onWindow(0.4) }} />

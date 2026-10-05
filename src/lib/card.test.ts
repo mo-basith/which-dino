@@ -4,7 +4,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { DinoId } from "../data/dinos";
 import type { Question } from "../data/quiz";
-import { backRows, blockHoloAt, filledBlocks, formatHatched, formatValue, holderLine, scaleLabel } from "./card";
+import { DINO_LIST } from "../data/dinos";
+import { SPRITES } from "../data/sprites";
+import { ART, artBox, artLeft, artScale, backRows, blockHoloAt, filledBlocks, formatHatched, formatValue, holderLine, scaleLabel } from "./card";
 
 // A fixed quiz so these tests don't move when the real one is rebalanced.
 // Answer 0 of every question scores trex; answer 1 never does.
@@ -95,4 +97,51 @@ test("rare bar blocks run the first 40% of the holo gradient, left to right", ()
   assert.equal(blockHoloAt(0), 0.01);
   assert.ok(Math.abs(blockHoloAt(19) - 0.39) < 1e-9);
   assert.ok(blockHoloAt(10) > blockHoloAt(9));
+});
+
+test("art box: x 44 to the window's right − 14, 28 below the top to the ground line", () => {
+  assert.deepEqual(artBox("common"), { left: 44, width: 188, height: 126 });
+  assert.deepEqual(artBox("rare"), { left: 44, width: 186, height: 126 });
+});
+
+test("art scale: the largest whole scale that fits the box, max 8", () => {
+  const expected = {
+    trex: 7,
+    velociraptor: 8,
+    triceratops: 7,
+    stegosaurus: 6,
+    brachiosaurus: 7,
+    spinosaurus: 6,
+    dilophosaurus: 8,
+    pterodactyl: 8,
+    mosasaurus: 7,
+    chicken: 8,
+  };
+  for (const dino of DINO_LIST) assert.equal(artScale(dino.id), expected[dino.id], dino.id);
+});
+
+test("art: every dino fits its box, centred on whole pixels, clear of the human", () => {
+  for (const dino of DINO_LIST) {
+    const grid = SPRITES[dino.id];
+    const scale = artScale(dino.id);
+    const box = artBox(dino.rarity);
+    const width = Math.max(...grid.map((row) => row.length)) * scale;
+    const left = artLeft(dino.id);
+    assert.ok(scale <= ART.maxScale, dino.id);
+    assert.ok(width <= box.width && grid.length * scale <= box.height, `${dino.id} fits`);
+    // A bigger scale would not fit (it really is the largest), unless capped.
+    const bigger = scale + 1;
+    assert.ok(
+      scale === ART.maxScale || (width / scale) * bigger > box.width || grid.length * bigger > box.height,
+      `${dino.id} is the largest`,
+    );
+    assert.ok(Number.isInteger(left) && left >= box.left && left + width <= box.left + box.width, `${dino.id} left`);
+    assert.ok(Math.abs(left - box.left - (box.left + box.width - left - width)) <= 1, `${dino.id} centred`);
+  }
+});
+
+test("sprites: every row of a grid is the same width", () => {
+  for (const [id, grid] of Object.entries(SPRITES)) {
+    assert.ok(grid.every((row) => row.length === grid[0].length), id);
+  }
 });

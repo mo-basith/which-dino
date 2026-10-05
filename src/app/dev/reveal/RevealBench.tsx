@@ -38,7 +38,7 @@ export function RevealBench({ initialDino, bare }: { initialDino: DinoId; bare: 
   return (
     <MotionOverride value={override}>
       <div data-motion={motion === "system" ? undefined : motion} className="overflow-clip">
-        <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter desk:max-w-wide">
+        <main className="relative isolate flex min-h-dvh w-full flex-col">
           <ResultScreen
             key={`${dinoId}-${motion}-${run}`}
             dinoId={dinoId}

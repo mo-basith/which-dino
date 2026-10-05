@@ -3,12 +3,13 @@ import { Card } from "@/components/card/Card";
 import { FlippableCard } from "@/components/card/FlipPill";
 import { HerdSlot, HerdTile } from "@/components/herd/Herd";
 import { AnswerRow } from "@/components/quiz/AnswerRow";
-import { CardFan, FaceDownCard } from "@/components/quiz/CardFan";
-import { Brand } from "@/components/quiz/parts";
-import { EnterToStart, StartButton } from "@/components/quiz/QuizStart";
+import { FaceDownCard } from "@/components/quiz/FaceDownCard";
+import { EnterToStart, QuizLogo, StartButton } from "@/components/quiz/QuizStart";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { Sprite } from "@/components/Sprite";
 import { DINO_LIST, type DinoId } from "@/data/dinos";
 import type { CardRow } from "@/lib/card";
+import { HeroFan } from "./HeroFan";
 import { ScrollLink } from "./ScrollLink";
 import { SectionReveal } from "./SectionReveal";
 
@@ -18,8 +19,8 @@ import { SectionReveal } from "./SectionReveal";
 // sample card. Copy is as in reference/design/screens/home-*.png: where the
 // two differ, the desktop wording shows from 768px up.
 
-/** Content width: 1200 centred, with the phone gutter outside it. */
-const CONTAINER = "mx-auto box-content w-auto max-w-wide px-gutter";
+/** The page container (1120 + gutter), shared with the header. */
+const CONTAINER = "site-container";
 const EYEBROW = "font-mono text-label text-text-3 uppercase";
 
 export function HomePage() {
@@ -40,18 +41,20 @@ export function HomePage() {
 
 function HomeTopBar() {
   return (
-    <header className="mt-6 flex h-9 items-center justify-between px-gutter md:mt-0 md:h-16 md:border-b md:border-line md:px-10">
-      <Brand />
-      <nav aria-label="Home" className="hidden items-center gap-6 md:flex">
-        <ScrollLink to="how" className="text-small text-text-2 transition-colors hover:text-text">
-          How it works
-        </ScrollLink>
-        <ScrollLink to="herd" className="text-small text-text-2 transition-colors hover:text-text">
-          The herd
-        </ScrollLink>
-        <StartButton look="small" className="ml-2" />
-      </nav>
-    </header>
+    <SiteHeader
+      logo={<QuizLogo dino="trex" />}
+      right={
+        <nav aria-label="Home" className="hidden items-center gap-6 md:flex">
+          <ScrollLink to="how" className="text-small text-text-2 transition-colors hover:text-text">
+            How it works
+          </ScrollLink>
+          <ScrollLink to="herd" className="text-small text-text-2 transition-colors hover:text-text">
+            The herd
+          </ScrollLink>
+          <StartButton look="small" className="ml-2" />
+        </nav>
+      }
+    />
   );
 }
 
@@ -63,7 +66,8 @@ function Hero() {
         className="bg-glow pointer-events-none absolute top-0 left-1/2 -z-10 h-[480px] w-[640px] -translate-x-1/2 -translate-y-1/4 [--glow-alpha:0.14] lg:top-1/2 lg:left-3/4 lg:h-[720px] lg:w-[900px] lg:-translate-y-1/2"
       />
       <div className={`${CONTAINER} flex flex-col lg:grid lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:items-center`}>
-        <CardFan className="mx-auto mt-12 [--face-k:0.5357] [--fan-rot:9deg] [--fan-x:0.41] lg:order-2 lg:mt-0 lg:[--face-k:0.857] lg:[--fan-rot:10deg] lg:[--fan-x:0.52]" />
+        {/* The fan at 0.56 on phones (134-wide cards), 0.72 from 1024, full size (240) from 1280. */}
+        <HeroFan className="mx-auto mt-12 [--fan-k:0.56] lg:order-2 lg:mt-0 lg:[--fan-k:0.72] xl:[--fan-k:1]" />
         <div className="mt-24 lg:mt-0">
           <p className={EYEBROW}>
             A personality quiz · 10 dinos<span className="hidden md:inline"> to collect</span>

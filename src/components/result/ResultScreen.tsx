@@ -3,7 +3,9 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CardScale, InteractiveCard } from "@/components/card/Card";
 import { FlipPill, useCardFlip } from "@/components/card/FlipPill";
-import { Brand, HoloChip, TopBar } from "@/components/quiz/parts";
+import { HoloChip } from "@/components/quiz/parts";
+import { QuizLogo } from "@/components/quiz/QuizStart";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { DINOS, type DinoId } from "@/data/dinos";
 import { CARD, type CardRow } from "@/lib/card";
 import { TIMING, ms } from "@/lib/motion";
@@ -253,7 +255,7 @@ export function ResultScreen({
       style={vars}
     >
       <div className="reveal-dim">
-        <TopBar left={<Brand mark={MARK} />} />
+        <SiteHeader logo={<QuizLogo dino={MARK} />} />
       </div>
       <p className="sr-only" role="status">
         {shown ? `${lead} ${name}` : "Shuffling the herd…"}
@@ -283,7 +285,7 @@ export function ResultScreen({
 
       {/* Two columns from 900px, centred in the height below the bar; "safe", so if the
           content is taller it aligns to the top and scrolls rather than clipping. */}
-      <div className="flex flex-1 flex-col items-center desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
+      <div className="site-container flex flex-1 flex-col items-center desk:flex-row desk:items-center-safe desk:justify-start desk:gap-24 desk:py-8">
         <div className="mt-8 flex flex-col items-center short:mt-4 desk:mt-0">
           <div ref={slotRef} className="relative">
             <div
@@ -331,7 +333,7 @@ export function ResultScreen({
         </div>
 
         <div
-          className="relative mt-6 flex w-full flex-1 flex-col items-center text-center short:mt-4 desk:mt-0 desk:w-auto desk:max-w-column desk:flex-none desk:items-start desk:text-left"
+          className="relative mt-6 flex w-full max-w-column flex-1 flex-col items-center text-center short:mt-4 desk:mt-0 desk:w-auto desk:flex-none desk:items-start desk:text-left"
           inert={!shown}
           aria-hidden={!shown || undefined}
         >

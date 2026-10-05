@@ -75,16 +75,37 @@ export const FRAME: Record<Rarity, number> = { common: 1, rare: 2 };
 /** Width of everything inside the frame and padding: 246 on commons, 244 on rares. */
 export const contentWidth = (rarity: Rarity) => CARD.width - 2 * (FRAME[rarity] + CARD.padding);
 
-/** The art window, and the room the dino keeps clear inside it. */
-export const ART = { height: 184, roomX: 80, roomY: 50, maxScale: 5 } as const;
+/**
+ * The art window (184 tall), the ground line (29 up from its bottom; the dino
+ * and the human stand on it), and the box the dino fills: from x 44 (clear of
+ * the human) to the window's right edge − 14, and from 28 below the window's
+ * top (room for the era label) down to the ground line.
+ */
+export const ART = { height: 184, ground: 29, boxLeft: 44, boxRight: 14, boxTop: 28, maxScale: 8 } as const;
 
-/** The largest whole-number scale (max 5) at which the dino fits the art window minus 80×50. */
-export function artScale(id: DinoId) {
+/** The dino's box inside the art window, in design px: 188 × 126 on commons, 186 × 126 on rares. */
+export const artBox = (rarity: Rarity) => ({
+  left: ART.boxLeft,
+  width: contentWidth(rarity) - ART.boxLeft - ART.boxRight,
+  height: ART.height - ART.ground - 1 - ART.boxTop,
+});
+
+const gridSize = (id: DinoId) => {
   const grid = SPRITES[id];
-  const cols = Math.max(...grid.map((row) => row.length));
-  const room = contentWidth(DINOS[id].rarity) - ART.roomX;
-  const fit = Math.min(room / cols, (ART.height - ART.roomY) / grid.length);
-  return Math.max(1, Math.min(ART.maxScale, Math.floor(fit)));
+  return { cols: Math.max(...grid.map((row) => row.length)), rows: grid.length };
+};
+
+/** The largest whole-number scale (max 8) at which the dino fits its box. */
+export function artScale(id: DinoId) {
+  const { cols, rows } = gridSize(id);
+  const box = artBox(DINOS[id].rarity);
+  return Math.max(1, Math.min(ART.maxScale, Math.floor(Math.min(box.width / cols, box.height / rows))));
+}
+
+/** Where the dino's left edge sits in the art window: centred in its box, on whole pixels. */
+export function artLeft(id: DinoId) {
+  const box = artBox(DINOS[id].rarity);
+  return box.left + Math.round((box.width - gridSize(id).cols * artScale(id)) / 2);
 }
 
 /**

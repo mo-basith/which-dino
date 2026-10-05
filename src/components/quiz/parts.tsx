@@ -1,26 +1,18 @@
 import type { ComponentProps, ReactNode } from "react";
-import { Sprite } from "@/components/Sprite";
-import type { DinoId } from "@/data/dinos";
 
 // Small shared pieces of the quiz screens.
 
-/** Top bar: 36px tall, 24px from the top. Slots stay in place even when empty. */
+/**
+ * A screen's control row (the questions' back / counter): 36px tall, under the
+ * site header. Slots stay in place even when empty.
+ */
 export function TopBar({ left, center, right }: { left: ReactNode; center?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="mt-6 grid h-9 grid-cols-[1fr_auto_1fr] items-center">
+    <div className="mt-4 grid h-9 grid-cols-[1fr_auto_1fr] items-center md:mt-6">
       <div className="flex items-center justify-self-start">{left}</div>
       <div className="justify-self-center">{center}</div>
       {/* Reserved for the mute button (sound comes in its own step). */}
       <div className="flex items-center justify-self-end">{right ?? <span className="size-9" aria-hidden />}</div>
-    </header>
-  );
-}
-
-export function Brand({ mark = "trex" }: { mark?: DinoId }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Sprite id={mark} size={{ scale: 1 }} />
-      <span className="text-small font-medium">Which Dino?</span>
     </div>
   );
 }

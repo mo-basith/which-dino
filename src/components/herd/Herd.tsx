@@ -1,6 +1,7 @@
 import { Sprite } from "@/components/Sprite";
 import { HoloChip } from "@/components/quiz/parts";
 import type { Dino, DinoId } from "@/data/dinos";
+import { SPRITES } from "@/data/sprites";
 
 // The herd: the ten dinos you can collect. Server-safe pieces, shared by the
 // home page now and the herd row and binder in step 5. `found` is always false
@@ -17,7 +18,10 @@ export function HerdSlot({ id, found }: { id: DinoId; found: boolean }) {
   );
 }
 
-const TILE_SCALE = 4;
+// Scale 4, or 3 for the wide ones (Triceratops, Stegosaurus, Spinosaurus), so
+// every silhouette fits a two-column tile on a 320px phone (98px inside).
+const TILE_ART_WIDTH = 96;
+const tileScale = (id: DinoId) => Math.min(4, Math.floor(TILE_ART_WIDTH / SPRITES[id][0].length));
 
 /** One dino in the herd grid: number, rare chip, silhouette (22% white cells until found), name. */
 export function HerdTile({ dino, found }: { dino: Dino; found: boolean }) {
@@ -30,7 +34,7 @@ export function HerdTile({ dino, found }: { dino: Dino; found: boolean }) {
       <div className="mt-2 flex h-[76px] items-end justify-center">
         <Sprite
           id={dino.id}
-          size={{ scale: TILE_SCALE }}
+          size={{ scale: tileScale(dino.id) }}
           silhouette
           cells={!found}
           color={found ? "var(--color-text)" : "rgb(255 255 255 / 0.22)"}
