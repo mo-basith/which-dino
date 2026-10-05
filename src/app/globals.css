@@ -540,7 +540,9 @@ html[data-quiz-resume] [data-quiz-root] {
   /* Card sizes that follow the viewport, in CSS so there's no jump after
      hydration (see Card's `size`). --card-k scales the 280×350 design.
      interactive: 280, or 240 when the viewport is under 700px tall.
-     result: the same, but 560 when the viewport is at least 1024×820. */
+     result (the result and the shared card): the same on phones; at the
+     two-column layout (900 wide) 560 from 960 tall, 420 (1.5×) from 720,
+     otherwise 280. */
   .card-size-interactive,
   .card-size-result {
     --card-k: 1;
@@ -549,7 +551,13 @@ html[data-quiz-resume] [data-quiz-root] {
     }
   }
   .card-size-result {
-    @media (width >= 1024px) and (height >= 820px) {
+    @media (width >= 900px) {
+      --card-k: 1;
+    }
+    @media (width >= 900px) and (height >= 720px) {
+      --card-k: 1.5;
+    }
+    @media (width >= 900px) and (height >= 960px) {
       --card-k: 2;
     }
   }

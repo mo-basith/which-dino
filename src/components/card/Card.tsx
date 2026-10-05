@@ -49,8 +49,9 @@ export function Card({ mode, width = CARD.width, className, ...card }: CardProps
 
 /**
  * A fixed width in px, or a size set in CSS by the viewport (.card-size-* in
- * globals.css): "interactive" is 280 (240 under 700px tall), "result" is the
- * same but 560 from 1024×820.
+ * globals.css): "interactive" is 280 (240 under 700px tall); "result" is the
+ * same on phones and, at the two-column layout (900 wide), 560 from 960 tall,
+ * 420 from 720, otherwise 280.
  */
 export type CardWidth = number | "interactive" | "result";
 
