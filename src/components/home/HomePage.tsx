@@ -3,12 +3,13 @@ import { Card } from "@/components/card/Card";
 import { FlippableCard } from "@/components/card/FlipPill";
 import { HerdSlot, HerdTile } from "@/components/herd/Herd";
 import { AnswerRow } from "@/components/quiz/AnswerRow";
-import { CardFan, FaceDownCard } from "@/components/quiz/CardFan";
+import { FaceDownCard } from "@/components/quiz/FaceDownCard";
 import { EnterToStart, QuizLogo, StartButton } from "@/components/quiz/QuizStart";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { Sprite } from "@/components/Sprite";
 import { DINO_LIST, type DinoId } from "@/data/dinos";
 import type { CardRow } from "@/lib/card";
+import { HeroFan } from "./HeroFan";
 import { ScrollLink } from "./ScrollLink";
 import { SectionReveal } from "./SectionReveal";
 
@@ -65,7 +66,8 @@ function Hero() {
         className="bg-glow pointer-events-none absolute top-0 left-1/2 -z-10 h-[480px] w-[640px] -translate-x-1/2 -translate-y-1/4 [--glow-alpha:0.14] lg:top-1/2 lg:left-3/4 lg:h-[720px] lg:w-[900px] lg:-translate-y-1/2"
       />
       <div className={`${CONTAINER} flex flex-col lg:grid lg:min-h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:items-center`}>
-        <CardFan className="mx-auto mt-12 [--face-k:0.5357] [--fan-rot:9deg] [--fan-x:0.41] lg:order-2 lg:mt-0 lg:[--face-k:0.857] lg:[--fan-rot:10deg] lg:[--fan-x:0.52]" />
+        {/* The fan at 0.56 on phones (134-wide cards), 0.72 from 1024, full size (240) from 1280. */}
+        <HeroFan className="mx-auto mt-12 [--fan-k:0.56] lg:order-2 lg:mt-0 lg:[--fan-k:0.72] xl:[--fan-k:1]" />
         <div className="mt-24 lg:mt-0">
           <p className={EYEBROW}>
             A personality quiz · 10 dinos<span className="hidden md:inline"> to collect</span>

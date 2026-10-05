@@ -1,7 +1,7 @@
 // The single source of truth for motion. Every duration, delay, stagger and
 // distance lives here; nothing is hardcoded anywhere else.
 // Units: milliseconds unless the key says otherwise (Rise/Shift = px, Scale/To/Rest/Active = ratio,
-// Max = degrees).
+// Max/Turn = degrees, Spread/Lift = px).
 
 export type Curve = readonly [x1: number, y1: number, x2: number, y2: number];
 const bezier = (curve: Curve) => `cubic-bezier(${curve.join(", ")})`;
@@ -59,6 +59,25 @@ export const TIMING = {
   // Home: each section below the first paint fades in and rises once as it enters.
   sectionIn: 480,
   sectionRise: 8,
+  // Home hero fan: on load the cards deal in (left, middle, right), each over
+  // dealIn, dealStagger apart, rising dealRise from turned-straight and
+  // invisible. The middle card's front changes every fanCycle, crossfading
+  // over fanFade. Every sheenEvery a light band crosses each card over
+  // sheenCross, sheenStagger apart. Hovered (fine pointers), the side cards
+  // spread fanSpread px and turn fanTurn more degrees, the middle lifts
+  // fanLift px, over fanHover.
+  dealIn: 520,
+  dealStagger: 80,
+  dealRise: 64,
+  fanCycle: 2400,
+  fanFade: 240,
+  sheenEvery: 6000,
+  sheenCross: 900,
+  sheenStagger: 160,
+  fanHover: 320,
+  fanSpread: 40,
+  fanTurn: 4,
+  fanLift: 10,
   // Share / Copy link: the check and "Link copied" hold this long.
   copiedHold: 1500,
   // Quiz: a picked answer holds, then the question departs left and the next
@@ -118,4 +137,14 @@ export const MOTION_CSS_VARS: Record<string, string> = {
   "--dur-dock": ms(TIMING.dock),
   "--dur-section": ms(TIMING.sectionIn),
   "--section-rise": px(TIMING.sectionRise),
+  "--dur-deal": ms(TIMING.dealIn),
+  "--deal-stagger": ms(TIMING.dealStagger),
+  "--deal-rise": px(TIMING.dealRise),
+  "--dur-fan-fade": ms(TIMING.fanFade),
+  "--dur-sheen": ms(TIMING.sheenCross),
+  "--sheen-stagger": ms(TIMING.sheenStagger),
+  "--dur-fan-hover": ms(TIMING.fanHover),
+  "--fan-spread": px(TIMING.fanSpread),
+  "--fan-turn": `${TIMING.fanTurn}deg`,
+  "--fan-lift": px(TIMING.fanLift),
 };

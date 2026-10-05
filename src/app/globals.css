@@ -706,4 +706,92 @@ html[data-quiz-resume] [data-quiz-root] {
     transform: none;
     transition: opacity var(--dur-crossfade) var(--motion-ease);
   }
+
+  /* ── The home hero fan (src/components/home/HeroFan.tsx) ──────────────────
+     .fan-deal is a card's resting place: the sides 180 out, 16 down and turned
+     12°. It deals in on first paint from @starting-style (turned straight,
+     dealRise lower, invisible), --deal-i × dealStagger after the first.
+     .fan-spread / .fan-lift take the hover on top of that. */
+  .fan {
+    --fan-x: 180px;
+    --fan-y: 16px;
+    --fan-r: 12deg;
+    --hover-spread: 0px;
+    --hover-turn: 0deg;
+    --hover-lift: 0px;
+  }
+  .fan-deal {
+    transform: translateX(calc(var(--side) * var(--fan-x))) translateY(calc(var(--side) * var(--side) * var(--fan-y)))
+      rotate(calc(var(--side) * var(--fan-r)));
+    transition:
+      transform var(--dur-deal) var(--motion-ease),
+      opacity var(--dur-deal) var(--motion-ease);
+    transition-delay: calc(var(--deal-i) * var(--deal-stagger));
+    @starting-style {
+      opacity: 0;
+      transform: translateX(calc(var(--side) * var(--fan-x))) translateY(var(--deal-rise)) rotate(0deg);
+    }
+  }
+  .fan-spread {
+    transform: translateX(calc(var(--side) * var(--hover-spread))) rotate(calc(var(--side) * var(--hover-turn)));
+    transition: transform var(--dur-fan-hover) var(--motion-ease);
+  }
+  .fan-lift {
+    transform: translateY(calc(-1 * var(--hover-lift)));
+    transition: transform var(--dur-fan-hover) var(--motion-ease);
+  }
+  .fan:hover {
+    @variant can-hover {
+      --hover-spread: var(--fan-spread);
+      --hover-turn: var(--fan-turn);
+      --hover-lift: var(--fan-lift);
+    }
+  }
+
+  /* The middle card's next front fades in over the current one. */
+  .fan-incoming {
+    transition: opacity var(--dur-fan-fade) var(--motion-ease);
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  /* The light band: parked off the left edge, it crosses when the fan sets
+     data-sheen, then snaps back (no transition) for next time. */
+  .fan-sheen {
+    position: absolute;
+    top: -20%;
+    bottom: -20%;
+    left: 0;
+    width: 45%;
+    background-image: linear-gradient(90deg, rgb(255 255 255 / 0), rgb(255 255 255 / 0.1), rgb(255 255 255 / 0));
+    transform: translateX(-110%) skewX(-14deg);
+  }
+  .fan[data-sheen] .fan-sheen {
+    transform: translateX(330%) skewX(-14deg);
+    transition: transform var(--dur-sheen) var(--motion-ease);
+    transition-delay: calc(var(--sheen-i) * var(--sheen-stagger));
+  }
+
+  /* Reduced motion: no deal, no sheen, no cycling (HeroFan), and hover leaves it be. */
+  .fan-deal,
+  .fan-spread,
+  .fan-lift,
+  .fan-incoming {
+    @variant reduced {
+      transition: none;
+    }
+  }
+  .fan:hover {
+    @variant reduced {
+      --hover-spread: 0px;
+      --hover-turn: 0deg;
+      --hover-lift: 0px;
+    }
+  }
+  .fan-sheen {
+    @variant reduced {
+      display: none;
+    }
+  }
 }
