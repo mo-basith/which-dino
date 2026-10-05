@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { Sprite } from "@/components/Sprite";
 import { DINOS, type Dino, type DinoId, type Rarity } from "@/data/dinos";
-import { SPRITES } from "@/data/sprites";
 import {
   BAR_BLOCKS,
   BAR_HOLO_SPAN,
+  ART,
+  artLeft,
   artScale,
   blockHoloAt,
-  contentWidth,
   filledBlocks,
   formatValue,
   holderLine,
@@ -71,14 +71,11 @@ const ON_WINDOW = {
 const RARE_DINO_HOLO = [0, BAR_HOLO_SPAN] as const;
 
 // The dino and the human stand on the ground line, 29px up from the bottom.
-const GROUND = 29;
+const GROUND = ART.ground;
 
 function ArtWindow({ dino, egg }: { dino: Dino; egg: boolean }) {
-  const grid = SPRITES[dino.id];
   const scale = artScale(dino.id);
-  const width = Math.max(...grid.map((row) => row.length)) * scale;
-  // Whole pixels, so the art never lands on a half pixel.
-  const left = Math.round((contentWidth(dino.rarity) - width) / 2);
+  const left = artLeft(dino.id);
 
   return (
     <div className="relative h-[184px] shrink-0 overflow-hidden rounded-[10px] card-window">
@@ -104,6 +101,8 @@ function ArtWindow({ dino, egg }: { dino: Dino; egg: boolean }) {
         size={{ scale }}
         color={dino.rarity === "rare" ? "holo" : "var(--card-dino)"}
         holoRange={RARE_DINO_HOLO}
+        // One material: the frill and the comb are the dino's colour too, not the art's red accent.
+        silhouette
         className="absolute"
         style={{ bottom: GROUND + 1, left }}
       />
