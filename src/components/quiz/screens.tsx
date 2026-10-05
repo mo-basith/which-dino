@@ -1,6 +1,8 @@
 import type { Question } from "@/data/quiz";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { AnswerRow } from "./AnswerRow";
 import { BackIcon, IconButton, TopBar, pad2 } from "./parts";
+import { QuizLogo } from "./QuizStart";
 
 // The quiz's question screen (the intro is the home page, components/home; the result is components/result). Presentational only: Quiz.tsx owns state and motion.
 // `stage` props are the data-phase/data-dir attributes for the part that moves.
@@ -22,6 +24,9 @@ export function QuestionScreen({ question, number, total, answered, picked, stag
   const titleId = `question-${question.id}`;
   return (
     <>
+      <SiteHeader logo={<QuizLogo dino="dilophosaurus" />} />
+      {/* The question column: 440, 520 from 900px; back / counter / progress above the question. */}
+      <div className="mx-auto flex w-full max-w-column flex-1 flex-col px-gutter desk:max-w-question">
       <TopBar
         left={
           <IconButton label="Back" onClick={onBack}>
@@ -39,7 +44,7 @@ export function QuestionScreen({ question, number, total, answered, picked, stag
       <Progress total={total} filled={answered} />
 
       <div className="q-stage" {...stage}>
-        <p className="mt-18 font-mono text-label uppercase text-text-3">Question {number}</p>
+        <p className="mt-12 font-mono text-label uppercase text-text-3 md:mt-16">Question {number}</p>
         <h1 id={titleId} className="mt-2 text-title text-balance">
           {question.prompt}
         </h1>
@@ -60,6 +65,7 @@ export function QuestionScreen({ question, number, total, answered, picked, stag
         <span className="can-hover:hidden">Tap an answer</span>
         <span className="hidden can-hover:inline">Tap an answer, or press 1–4</span>
       </p>
+      </div>
     </>
   );
 }

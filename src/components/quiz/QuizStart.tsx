@@ -1,13 +1,16 @@
 "use client";
 
 import { createContext, useContext, useEffect, type ComponentProps } from "react";
+import { Logo } from "@/components/site/Logo";
+import type { DinoId } from "@/data/dinos";
 import { PRIMARY } from "./parts";
 
-// Starting the quiz from anywhere inside it (the home page's Start buttons and
-// Enter). Everything goes through Quiz's own start(), so its ref lock still
-// stops a double start.
+// Moving around the quiz from anywhere inside it: the home page's Start
+// buttons and Enter, and the logo (home). Everything goes through Quiz's own
+// functions, so its ref lock still stops a double start.
 
-export const QuizStartContext = createContext<() => void>(() => {});
+export type QuizNav = { start: () => void; home: () => void };
+export const QuizNavContext = createContext<QuizNav>({ start: () => {}, home: () => {} });
 
 const SECONDARY_SMALL =
   "press holo-ring inline-grid h-9 place-items-center rounded-icon border border-line bg-raised-1 px-3.5 text-small font-medium text-text [--ring-radius:var(--radius-icon)]";
@@ -19,7 +22,7 @@ export function StartButton({
   children = "Start the quiz",
   ...props
 }: { look?: "primary" | "small" } & Omit<ComponentProps<"button">, "onClick" | "type">) {
-  const start = useContext(QuizStartContext);
+  const { start } = useContext(QuizNavContext);
   return (
     <button type="button" onClick={start} className={`${look === "small" ? SECONDARY_SMALL : PRIMARY} ${className}`} {...props}>
       {children}
@@ -35,7 +38,7 @@ const INTERACTIVE = "a, button, input, textarea, select, summary, [contenteditab
  * it leaves Enter alone on fields, links and buttons, which have their own.
  */
 export function EnterToStart() {
-  const start = useContext(QuizStartContext);
+  const { start } = useContext(QuizNavContext);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Enter" || event.repeat || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
@@ -48,4 +51,23 @@ export function EnterToStart() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [start]);
   return null;
+}
+
+/**
+ * The logo inside the quiz. Home is step 0 of the quiz, not another page, so
+ * it walks back through the quiz's own history (the answers stay) instead of
+ * reloading "/". Outside a quiz (the dev bench) it's a plain link.
+ */
+export function QuizLogo({ dino }: { dino: DinoId }) {
+  const { home } = useContext(QuizNavContext);
+  return (
+    <Logo
+      dino={dino}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        home();
+      }}
+    />
+  );
 }

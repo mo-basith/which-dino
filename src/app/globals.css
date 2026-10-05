@@ -37,7 +37,7 @@
 
   /* Layout */
   --container-column: 440px; /* the phone column, centred on wider screens */
-  --container-wide: 1200px; /* two-column desktop screens (result, shared card), from 900px */
+  --container-site: 1120px; /* every page and section (the header too), with the gutter outside */
   --container-question: 520px; /* the question column on desktop, from 900px */
   --container-measure: 300px; /* a centred line of body text on phones (the result one-liner) */
 
@@ -74,6 +74,9 @@
   --text-body--line-height: 1.5;
   --text-small: 0.875rem;
   --text-small--line-height: 1.45;
+  --text-logo: 0.9375rem; /* "Which Dino?" in the logo: Geist Mono 500, 15px */
+  --text-logo--letter-spacing: -0.02em;
+  --text-logo--font-weight: 500;
   --text-label: 0.75rem; /* Geist Mono, uppercase */
   --text-label--line-height: 1.3;
 }
@@ -333,6 +336,15 @@ body {
       opacity var(--dur-section) var(--motion-ease),
       transform var(--dur-section) var(--motion-ease);
   }
+}
+
+/* The page container: 1120 of content with the gutter outside it, centred.
+   Full width up to that, so it works as a block or a flex item alike. */
+@utility site-container {
+  width: 100%;
+  max-width: calc(var(--container-site) + 2 * var(--spacing-gutter));
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
 }
 
 /* Crossfade for state changes inside a component (picked layer, key hint ↔ check). */

@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
   useReducer,
   useRef,
+  useState,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -16,7 +17,7 @@ import { QUIZ } from "@/data/quiz";
 import { backRows } from "@/lib/card";
 import { TIMING } from "@/lib/motion";
 import { score } from "@/lib/scoring";
-import { QuizStartContext } from "./QuizStart";
+import { QuizNavContext, type QuizNav } from "./QuizStart";
 import { QuestionScreen } from "./screens";
 
 // The whole quiz flow on "/": intro → question 1–6 → result, with no route change.
@@ -352,24 +353,31 @@ export function Quiz({ home }: { home: ReactNode }) {
     }
   };
 
-  // A stable start for the home page's buttons and Enter, always calling the latest start().
-  const startRef = useRef(start);
-  useLayoutEffect(() => {
-    startRef.current = start;
-  });
-  const startFromHome = useCallback(() => startRef.current(), []);
+  // The logo: home is step 0. From the home page itself it's the top of the page.
+  const goHome = () => {
+    if (step === 0) {
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "instant" : "smooth" });
+      return;
+    }
+    if (busy.current) return;
+    busy.current = true;
+    history.go(-step); // back to the intro's entry → popstate (answers stay)
+  };
 
-  // The home page lays out its own full-width sections; the quiz screens are a column.
-  const column =
-    screen === "intro"
-      ? ""
-      : `max-w-column px-gutter ${screen === "result" ? "desk:max-w-wide" : screen === "question" ? "desk:max-w-question" : ""}`;
+  // Stable functions for the home page and the logo, always calling the latest ones.
+  const navRef = useRef<QuizNav>({ start, home: goHome });
+  useLayoutEffect(() => {
+    navRef.current = { start, home: goHome };
+  });
+  const startFromNav = useCallback(() => navRef.current.start(), []);
+  const homeFromNav = useCallback(() => navRef.current.home(), []);
+  const [nav] = useState<QuizNav>(() => ({ start: startFromNav, home: homeFromNav }));
 
   const moving = { "data-phase": phase, "data-dir": dir };
   const still = { "data-phase": "idle", "data-dir": dir };
 
   return (
-    <QuizStartContext value={startFromHome}>
+    <QuizNavContext value={nav}>
       <script
         type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
         suppressHydrationWarning
@@ -382,7 +390,7 @@ export function Quiz({ home }: { home: ReactNode }) {
           tabIndex={-1}
           onKeyDown={onKeyDown}
           data-quiz-root
-          className={`relative isolate mx-auto flex min-h-dvh w-full flex-col outline-none ${column}`}
+          className="relative isolate flex min-h-dvh w-full flex-col outline-none"
         >
           {/* The result arrives by fade only: its staged reveal is laid out against the viewport. */}
           <div
@@ -416,6 +424,6 @@ export function Quiz({ home }: { home: ReactNode }) {
           </div>
         </main>
       </div>
-    </QuizStartContext>
+    </QuizNavContext>
   );
 }

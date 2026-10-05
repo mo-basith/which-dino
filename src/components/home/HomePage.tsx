@@ -4,8 +4,8 @@ import { FlippableCard } from "@/components/card/FlipPill";
 import { HerdSlot, HerdTile } from "@/components/herd/Herd";
 import { AnswerRow } from "@/components/quiz/AnswerRow";
 import { CardFan, FaceDownCard } from "@/components/quiz/CardFan";
-import { Brand } from "@/components/quiz/parts";
-import { EnterToStart, StartButton } from "@/components/quiz/QuizStart";
+import { EnterToStart, QuizLogo, StartButton } from "@/components/quiz/QuizStart";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { Sprite } from "@/components/Sprite";
 import { DINO_LIST, type DinoId } from "@/data/dinos";
 import type { CardRow } from "@/lib/card";
@@ -18,8 +18,8 @@ import { SectionReveal } from "./SectionReveal";
 // sample card. Copy is as in reference/design/screens/home-*.png: where the
 // two differ, the desktop wording shows from 768px up.
 
-/** Content width: 1200 centred, with the phone gutter outside it. */
-const CONTAINER = "mx-auto box-content w-auto max-w-wide px-gutter";
+/** The page container (1120 + gutter), shared with the header. */
+const CONTAINER = "site-container";
 const EYEBROW = "font-mono text-label text-text-3 uppercase";
 
 export function HomePage() {
@@ -40,18 +40,20 @@ export function HomePage() {
 
 function HomeTopBar() {
   return (
-    <header className="mt-6 flex h-9 items-center justify-between px-gutter md:mt-0 md:h-16 md:border-b md:border-line md:px-10">
-      <Brand />
-      <nav aria-label="Home" className="hidden items-center gap-6 md:flex">
-        <ScrollLink to="how" className="text-small text-text-2 transition-colors hover:text-text">
-          How it works
-        </ScrollLink>
-        <ScrollLink to="herd" className="text-small text-text-2 transition-colors hover:text-text">
-          The herd
-        </ScrollLink>
-        <StartButton look="small" className="ml-2" />
-      </nav>
-    </header>
+    <SiteHeader
+      logo={<QuizLogo dino="trex" />}
+      right={
+        <nav aria-label="Home" className="hidden items-center gap-6 md:flex">
+          <ScrollLink to="how" className="text-small text-text-2 transition-colors hover:text-text">
+            How it works
+          </ScrollLink>
+          <ScrollLink to="herd" className="text-small text-text-2 transition-colors hover:text-text">
+            The herd
+          </ScrollLink>
+          <StartButton look="small" className="ml-2" />
+        </nav>
+      }
+    />
   );
 }
 

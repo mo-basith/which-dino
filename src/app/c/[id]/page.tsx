@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FlippableCard } from "@/components/card/FlipPill";
-import { Brand, PRIMARY, TopBar } from "@/components/quiz/parts";
+import { PRIMARY } from "@/components/quiz/parts";
+import { Logo } from "@/components/site/Logo";
+import { SiteHeader } from "@/components/site/SiteHeader";
 import { DINO_IDS, DINOS, type Dino, type DinoId } from "@/data/dinos";
 import { backRows } from "@/lib/card";
 import { cardPath, withArticle, withCapitalArticle } from "@/lib/share";
@@ -35,11 +37,11 @@ export default async function SharedCardPage({ params }: PageProps<"/c/[id]">) {
 
   return (
     <div className="overflow-clip">
-      <main className="relative isolate mx-auto flex min-h-dvh w-full max-w-column flex-col px-gutter desk:max-w-wide">
-        <TopBar left={<Brand mark="velociraptor" />} />
+      <main className="relative isolate flex min-h-dvh w-full flex-col">
+        <SiteHeader logo={<Logo dino="velociraptor" />} />
         {/* Phone: one column, the button at the bottom. From 900px: card left, text right,
             centred in the height below the bar (top-aligned and scrolling if taller). */}
-        <div className="flex flex-1 flex-col desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
+        <div className="site-container flex flex-1 flex-col desk:flex-row desk:items-center-safe desk:justify-center desk:gap-24 desk:py-8">
           <div className="relative mt-8 self-center short:mt-4 desk:mt-0">
             <div
               aria-hidden
@@ -47,7 +49,7 @@ export default async function SharedCardPage({ params }: PageProps<"/c/[id]">) {
             />
             <FlippableCard dinoId={dino.id} rows={backRows(dino.id)} width="result" />
           </div>
-          <div className="flex flex-1 flex-col desk:w-full desk:max-w-column desk:flex-none">
+          <div className="mx-auto flex w-full max-w-column flex-1 flex-col desk:mx-0 desk:flex-none">
             <h1 className="mt-8 text-center text-title text-balance short:mt-6 desk:mt-0 desk:text-left desk:text-display">
               A friend is {withArticle(dino.name)}.
             </h1>
