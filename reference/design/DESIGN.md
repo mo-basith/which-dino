@@ -37,3 +37,12 @@ Frames of the locked reveal ("R2 Shuffle"), which plays after question 6 and set
 3. `06-reveal-3-settled-into-result.png`: after the flip, the title, chip, one-liner, actions and herd row fade in one after another. This is exactly the result screen.
 
 Timings live in `TIMING`; step 4's prompt describes the sequence.
+
+## Polish round (step 4.3) — supersedes the matching parts above
+| File | What |
+|---|---|
+| brand/logo.png | **The logo, locked.** A mini card (18×24, 1px holo edge, rotated −10°) with the dino sprite at scale 1 stepping off its bottom-right corner, then "Which Dino?" in **Geist Mono** 500. The dino still changes per screen. Right: the face-down card design ("sleeve"). |
+| screens/home-hero-desktop.png | First fold, 1440. Header and content share one 1120px container, so the logo lines up with the heading. Fan: sleeves left and right, a real card front in the middle (it cycles through all ten). |
+| screens/d2-desktop-result-v2.png | Desktop result: card 420 (1.5×) at this height, centred under the header with equal space above and below. Supersedes d2-desktop-result.png. |
+| card/card-art-v2.png | Top row: the art as it is now. Bottom row: the new size rule and the redrawn Spinosaurus and Stegosaurus. |
+| sprites-v2.json | Exact replacement grids for `spinosaurus` and `stegosaurus`. |
